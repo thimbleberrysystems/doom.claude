@@ -161,13 +161,22 @@ function install(mode) {
     padding: 0,
   };
 
-  // hooks — merge our marked entries idempotently.
+  // hooks — install our current entries. Strip any prior `# snake.claude`
+  // entries first (self-heals across versions — e.g. old tmux play/pause hooks)
+  // then add the fresh command. Idempotent, and preserves unrelated hooks.
   if (!data.hooks || typeof data.hooks !== 'object' || Array.isArray(data.hooks)) data.hooks = {};
   for (const [event, command] of Object.entries(HOOKS)) {
-    if (!Array.isArray(data.hooks[event])) data.hooks[event] = [];
-    if (!eventHasMarker(data.hooks[event])) {
-      data.hooks[event].push({ hooks: [{ type: 'command', command }] });
-    }
+    const arr = Array.isArray(data.hooks[event]) ? stripMarker(data.hooks[event]) : [];
+    arr.push({ hooks: [{ type: 'command', command }] });
+    data.hooks[event] = arr;
+  }
+  // Also strip our stale hooks from events we no longer use.
+  for (const event of Object.keys(data.hooks)) {
+    if (HOOKS[event]) continue;
+    if (!Array.isArray(data.hooks[event])) continue;
+    const cleaned = stripMarker(data.hooks[event]);
+    if (cleaned.length === 0) delete data.hooks[event];
+    else data.hooks[event] = cleaned;
   }
 
   try {
