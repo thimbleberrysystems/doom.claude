@@ -1,88 +1,54 @@
 # doom.claude 😈
 
-Your Claude Code status line, **DOOM-style**. The bottom of your terminal becomes the iconic DOOM HUD — **HEALTH = remaining context**, **AMMO = tokens**, and the **DOOMGUY face reacts to what Claude is doing** — with a little auto-firefight above it that heats up while Claude works. One command, no tmux, no extra window.
+**The real DOOM, in your terminal, in one command.** No install, no WAD hunting, no compiler — `npx doom.claude` runs the actual DOOM engine (doomgeneric, compiled to WebAssembly) full-screen with truecolor half-block rendering. The shareware game data ships in the package.
 
 <p align="center">
-  <img src="docs/doom.svg" alt="Claude Code with a two-row DOOM HUD status line: a combat scene and the classic DOOM status bar" width="780">
+  <img src="docs/doom-title.png" alt="DOOM running in the terminal via doom.claude" width="600">
+  <br>
+  <em>Actual output from the bundled engine — rendered in your terminal as truecolor half-blocks.</em>
 </p>
 
-## Quick start
+## Play
 
-One command — needs only Node.js. Works from a normal shell **or** via `!` right inside Claude:
+From a normal terminal (needs a real TTY — not Claude's `!`):
 
 ```sh
 npx doom.claude
 ```
 
-It edits `~/.claude/settings.json` (backed up first) to add a status line + a few hooks, and drops two rows at the bottom of Claude that refresh about once a second:
+**Controls:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use/open · `1`–`7` weapons · `Tab` map · `Esc` menu · `Q` quit.
 
-```
-E1M1 Opus 4.8   ▐▛▏ ▸ m      m        ✱ B L A M ✱ †        ← combat scene
-AMMO 128k ║ HEALTH ▓▓▓▓▓▓▓░░ 66% ║ ( >_< ) ║ TIME 12s ║ 27 kills   ← DOOM status bar
-```
-
-If it doesn't appear immediately, reload settings with `/statusline` (or restart Claude Code).
-
-## The mappings
-
-| DOOM stat | What it really is |
-| --- | --- |
-| **HEALTH** | remaining context — as context fills, you *take damage* 🩸 |
-| **AMMO** | total tokens |
-| **ARMOR** | 5-hour usage budget remaining |
-| **TIME** | elapsed on the current turn |
-| **KILLS** | imps dropped in the firefight |
-| **the DOOMGUY face** | reacts to Claude (see below) |
-| **# of imps** | more active subagents → more imps storming the corridor |
-
-**The face** says what Claude's up to:
-
-| Face | Meaning |
-| --- | --- |
-| `( -.- )` | idle |
-| `( >_< )` | thinking (generating) |
-| `( ^o^ )` | just finished a turn |
-| `( x_o )` | **hurt** — context nearly full |
-| `( O_O )` | subagent swarm (3+ agents) |
-
-## Why is it auto-play (I can't steer it)?
-
-Because a status line **can't read your keyboard** — while Claude runs, your keys belong to Claude. The status line is display-only. So DOOM plays itself, and instead of controlling it you get a genuinely useful **activity + telemetry readout**. (This is also why there's no tmux or second window — none is needed.)
-
-## Turning it off / on
-
-A status line can't have a clickable close button (it can't receive input), so use:
-
-```sh
-npx doom.claude off     # remove the HUD + hooks (restores any status line you had before)
-npx doom.claude on      # put it back
-```
-
-(`uninstall` / `install` are aliases.)
-
-## Multiple Claude sessions
-
-All state is keyed by `session_id`, so every open Claude session gets its **own** HUD and its **own** firefight — no cross-session interference.
-
-## Check your status-line height (optional)
-
-```sh
-npx doom.claude probe     # shows numbered rows + the JSON fields available
-npx doom.claude install   # switch back to the HUD
-```
-
-Count the numbered rows you can see — that's your height budget. (The HUD falls back to a single combined row if height is tight.)
+> Movement is smoothest on terminals with truecolor. Since terminals send key-*press* only, held-to-move relies on key autorepeat (tap again to keep moving); it feels best on terminals that support the Kitty keyboard protocol (Kitty, Ghostty, WezTerm).
 
 ## How it works
 
-- **Status line** — `~/.claude/doom/statusline.js` runs each refresh (`refreshInterval: 1`). It reads the JSON context Claude pipes in, advances the firefight one tick, and prints two rows sized to your terminal width (read from `/dev/tty`). Per-session state, and written to **never crash** the status bar.
-- **Hooks** — `UserPromptSubmit`/`Stop` flag busy/idle and stamp the turn's start/end; `SubagentStart`/`SubagentStop` keep an agent count. Each parses `session_id` from its own input. Tagged with a `# doom.claude` marker so install is idempotent and uninstall is surgical.
+- The engine is [**doomgeneric**](https://github.com/ozkl/doomgeneric) compiled to **WebAssembly** — it runs under plain Node, no native modules, no system packages. (The WASM build is vendored from [pi-doom](https://github.com/badlogic/pi-doom).)
+- Each 640×400 frame is drawn with half-block `▀` characters: the top pixel is the cell's foreground color, the bottom pixel its background — two pixels per character cell, 24-bit color, fit to your terminal.
+- Keyboard comes from raw-mode stdin, mapped to DOOM key codes.
+- The **shareware WAD** (`doom1.wad`, "Knee-Deep in the Dead") is bundled — freely redistributable, unmodified.
+
+## Bonus: the DOOM status-line HUD
+
+There's also a DOOM-themed **Claude Code status line** (from an earlier iteration) — HEALTH = remaining context, AMMO = tokens, a reactive DOOMGUY face, and an auto-firefight. It lives at the bottom of Claude while you work:
+
+<p align="center">
+  <img src="docs/doom.svg" alt="DOOM-themed Claude Code status-line HUD" width="640">
+</p>
+
+```sh
+npx doom.claude hud        # install it
+npx doom.claude hud off    # remove it
+```
 
 ## Requirements
 
-- **Node.js ≥ 16**.
-- **Claude Code** (the status line + hooks are its features). Linux, macOS, or WSL.
+- **Node.js ≥ 16** (WebAssembly support).
+- A **truecolor terminal**. Linux, macOS, or WSL.
 
-## License
+## Credits & license
 
-MIT
+- [id Software](https://github.com/id-Software/DOOM) — DOOM (© 1993).
+- [doomgeneric](https://github.com/ozkl/doomgeneric) — the portable port.
+- [pi-doom](https://github.com/badlogic/pi-doom) — the Node/WASM build this vendors.
+
+**GPL-2.0-or-later** (see [LICENSE](LICENSE)). DOOM is a trademark of id Software; this project is not affiliated with or endorsed by id Software.

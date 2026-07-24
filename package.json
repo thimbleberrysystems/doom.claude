@@ -1,7 +1,7 @@
 {
   "name": "doom.claude",
   "version": "1.0.0",
-  "description": "A DOOM HUD in your Claude Code status line — HEALTH = remaining context, AMMO = tokens, and the DOOMGUY face reacts to what Claude is doing.",
+  "description": "Real DOOM in your terminal — the actual doomgeneric engine (WASM) with truecolor half-block rendering — plus an optional DOOM-themed Claude Code status-line HUD.",
   "author": "thimbleberrysystems <thimbleberrysystems@gmail.com>",
   "bin": {
     "doom.claude": "bin/doom.claude.js"
@@ -15,7 +15,9 @@
   "files": [
     "bin/",
     "src/",
-    "README.md"
+    "engine/",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=16"
@@ -35,5 +37,5 @@
     "cli",
     "terminal"
   ],
-  "license": "MIT"
+  "license": "GPL-2.0-or-later"
 }
