@@ -15,13 +15,13 @@ function log(msg) {
 function help() {
   log(`kaboom.claude — real Freedoom next to Claude Code
 
-  npx kaboom.claude            Open Claude and the game side by side. The game
-                               plays while you're in its pane and waits while
-                               you're in Claude; when Claude replies a 🔔 note
-                               shows so you can switch at your own pace. The
-                               focused pane has a green outline. Switch: click a
-                               pane, or the ◀ Claude / Game ▶ / ⤢ Zoom / ✕ Quit
-                               buttons in the bottom bar. (Requires tmux.)
+  npx kaboom.claude            Open Claude and the game side by side. When Claude
+                               starts working the game auto-starts so you can
+                               play the wait; it never switches you back — when
+                               the reply's ready a 🔔 note shows and you return at
+                               your own pace. The focused pane has a green
+                               outline. Switch: click a pane, or the ◀ Claude /
+                               Game ▶ / ⤢ Zoom / ✕ Quit buttons. (Requires tmux.)
 
   npx kaboom.claude unhook     Remove the pause-on-idle hooks kaboom added to
                                ~/.claude/settings.json.

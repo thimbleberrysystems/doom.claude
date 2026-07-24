@@ -27,9 +27,10 @@ That's it — Claude and the game open side by side:
 
 Each pane is **labelled** (`◀ CLAUDE` / `GAME ▶`) and the **focused pane gets a bright green outline**, so it's always clear which one has your keys.
 
+- **Auto-starts on Claude's turn:** the moment you send a prompt and Claude starts working, the game **jumps into focus and starts** — play the wait, hands-free.
+- **You stay in control otherwise:** it plays while you're in its pane and quietly **waits when you switch to Claude**. It **never switches you back** to Claude on its own.
+- **Claude at your own pace:** when the reply's ready, a **🔔 "ready" note** appears in the game (no interruption). Go read it whenever *you* like.
 - **Switch:** **click** a pane, or the **◀ Claude** / **Game ▶** buttons in the bottom bar (or **Alt-←/→**). The green outline moves with you.
-- **It plays while you're in it:** the game runs **only while its pane is focused**, and quietly **waits when you're over in Claude** — nothing is ever forced, and it never plays unattended.
-- **Claude at your own pace:** when Claude replies, a **🔔 "ready" note** appears in the game (no interruption). Switch to Claude whenever *you* like.
 - **Zoom:** the **⤢ Zoom** button (or **Alt-z**) blows the game up to fullscreen for real playing; again to return.
 - **Game keys:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use · `1`–`7` weapons · `Q` quit.
 - **Buttons:** `◀ Claude` · `Game ▶` · `⤢ Zoom` · `✕ Quit` (closes the split). Runs on its own tmux socket, so your normal tmux config is untouched; remove the pause hooks with `npx kaboom.claude unhook`.

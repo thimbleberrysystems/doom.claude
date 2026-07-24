@@ -33,6 +33,7 @@ let kittyEnabled = false;
 // (no KABOOM_ID) always runs and never pauses.
 const KID = process.env.KABOOM_ID || null;
 const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`) : null;
+const SELF_PANE = process.env.TMUX_PANE || ''; // this game's tmux pane
 let focused = false;       // game pane focused? starts false (split focuses Claude first)
 let paused = !!KID;        // derived: coupled & not focused → frozen
 let frozenDirty = !!KID;
@@ -199,15 +200,28 @@ function updatePaused() {
     else prev = null; // regained focus → force a full redraw of the game
   }
 }
-// Read Claude's state — only to show/hide the "ready" note; it never pauses.
+function tmuxSelf(args) {
+  try { require('child_process').spawnSync('tmux', args, { stdio: 'ignore' }); } catch (_) {}
+}
+// Read Claude's state. When Claude STARTS working, bring the game up so you can
+// play the wait. When Claude replies, only show a note — never switch you back.
 function pollClaude() {
   let m = 0;
   try { m = fs.statSync(ACT).mtimeMs; } catch (_) {}
   if (m !== claudeMtime) {
     let s = '';
     try { s = fs.readFileSync(ACT, 'utf8').trim(); } catch (_) {}
-    const ready = s === 'idle';
-    if (ready !== claudeReady) { claudeReady = ready; prev = null; }
+    if (s === 'busy') {
+      claudeReady = false;
+      prev = null;
+      // Focus the game pane and start playing (deterministic, not reliant on
+      // focus events). This is the ONLY automatic switch — and it's toward the
+      // game, never back to Claude.
+      if (SELF_PANE) tmuxSelf(['select-pane', '-t', SELF_PANE]);
+      if (!focused) { focused = true; updatePaused(); }
+    } else if (s === 'idle') {
+      if (!claudeReady) { claudeReady = true; prev = null; }
+    }
     claudeMtime = m;
   }
 }
