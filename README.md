@@ -44,19 +44,6 @@ Focus the Doom pane (`Ctrl-b` then `→`) to play while you wait on a response; 
 - Keyboard comes from raw-mode stdin, mapped to DOOM key codes.
 - The **shareware WAD** (`doom1.wad`, "Knee-Deep in the Dead") is bundled — freely redistributable, unmodified.
 
-## Bonus: the DOOM status-line HUD
-
-There's also a DOOM-themed **Claude Code status line** (from an earlier iteration) — HEALTH = remaining context, AMMO = tokens, a reactive DOOMGUY face, and an auto-firefight. It lives at the bottom of Claude while you work:
-
-<p align="center">
-  <img src="docs/doom.svg" alt="DOOM-themed Claude Code status-line HUD" width="640">
-</p>
-
-```sh
-npx doom.claude hud        # install it
-npx doom.claude hud off    # remove it
-```
-
 ## Requirements
 
 - **Node.js ≥ 16** (WebAssembly support).
@@ -68,4 +55,4 @@ npx doom.claude hud off    # remove it
 - [doomgeneric](https://github.com/ozkl/doomgeneric) — the portable port.
 - [pi-doom](https://github.com/badlogic/pi-doom) — the Node/WASM build this vendors.
 
-**GPL-2.0-or-later** (see [LICENSE](LICENSE)). DOOM is a trademark of id Software; this project is not affiliated with or endorsed by id Software.
+**GPL-2.0-or-later** (see [LICENSE](LICENSE)). DOOM is a trademark of id Software; Claude and Claude Code are trademarks of Anthropic. This is an independent, unofficial tool, not affiliated with or endorsed by id Software or Anthropic.

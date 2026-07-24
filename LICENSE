@@ -33,5 +33,5 @@ Bundled third-party components
 DOOM is a trademark of id Software LLC. Claude and Claude Code are trademarks of
 Anthropic PBC. This project is an independent, unofficial tool; it is not
 affiliated with, endorsed by, or sponsored by id Software, ZeniMax, or Anthropic.
-It bundles and redistributes no Anthropic software — the `split` and `hud`
-commands only invoke or configure the user's own separately-installed Claude Code.
+It bundles and redistributes no Anthropic software — the `split` command only
+launches the user's own separately-installed Claude Code alongside the game.

@@ -1,7 +1,7 @@
 {
   "name": "doom.claude",
   "version": "1.0.0",
-  "description": "Real DOOM in your terminal — the actual doomgeneric engine (WASM) with truecolor half-block rendering — plus an optional DOOM-themed Claude Code status-line HUD.",
+  "description": "Real DOOM in your terminal — the actual doomgeneric engine (WASM) with truecolor half-block rendering. Play full-screen, or side by side with Claude Code in a tmux split.",
   "author": "thimbleberrysystems <thimbleberrysystems@gmail.com>",
   "bin": {
     "doom.claude": "bin/doom.claude.js"
@@ -27,15 +27,15 @@
     "darwin"
   ],
   "keywords": [
+    "doom",
+    "doomgeneric",
+    "wasm",
+    "terminal",
+    "game",
     "claude",
     "claude-code",
-    "statusline",
-    "status-line",
-    "doom",
-    "hud",
-    "game",
-    "cli",
-    "terminal"
+    "tmux",
+    "cli"
   ],
   "license": "GPL-2.0-or-later"
 }
