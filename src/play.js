@@ -221,13 +221,14 @@ function togglePlay() {
 function drawPausedBanner() {
   const cols = out.columns || 80, rows = out.rows || 24;
   const msg = [
-    '⏸  PAUSED — Claude is ready',
+    '⏸   PAUSED  ·  Claude replied — your turn',
     '',
-    '  P                play now',
-    '  click / Alt-←    back to Claude',
-    '  Q                quit',
+    '    P        play now',
+    '    Alt-z    zoom fullscreen',
+    '    Q        quit',
     '',
-    'The game auto-plays while Claude is thinking.',
+    'Back to Claude:  click it, or Alt-←',
+    '(the game plays on its own while Claude is thinking)',
   ];
   let s = '\x1b[2J';
   const top = Math.max(1, Math.floor((rows - msg.length) / 2));

@@ -17,9 +17,10 @@ function help() {
 
   npx kaboom.claude            Open Claude and the game side by side in a tmux
                                split. The game plays while Claude is thinking
-                               and pauses when it replies; press P in the game
-                               to play/pause anytime. Switch panes: click one,
-                               or Alt-←/→. (Requires tmux.)
+                               and pauses when it replies.
+                               Switch panes:  click one, or Alt-← / Alt-→.
+                               Zoom the game fullscreen:  Alt-z.
+                               (Requires tmux.)
 
   npx kaboom.claude unhook     Remove the pause-on-idle hooks kaboom added to
                                ~/.claude/settings.json.

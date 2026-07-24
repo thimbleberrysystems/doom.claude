@@ -67,36 +67,54 @@ function run() {
     log(`tmux new-session failed: ${(r.stderr || '').trim()}`);
     process.exit(1);
   }
-  r = tmux(['split-window', '-h', '-t', `${session}:0`, shell]);
+  // Give the game 58% of the width so it renders bigger / more readable.
+  r = tmux(['split-window', '-h', '-l', '58%', '-t', `${session}:0`, shell]);
   if (r.status !== 0) {
     tmux(['kill-session', '-t', session]);
     log(`tmux split-window failed: ${(r.stderr || '').trim()}`);
     process.exit(1);
   }
 
-  // Right pane (0.1) = the game; left pane (0.0) = Claude. Focus Claude to start.
+  // Right pane (0.1) = the game; left pane (0.0) = Claude.
   tmux(['send-keys', '-t', `${session}:0.1`, gameCmd, 'Enter']);
   tmux(['send-keys', '-t', `${session}:0.0`, claudeCmd, 'Enter']);
-  tmux(['select-pane', '-t', `${session}:0.0`]);
 
-  // ---- make switching intuitive (all isolated to our socket) ----
-  tmux(['set-option', '-g', 'mouse', 'on']);                 // click a pane to focus it
-  tmux(['bind-key', '-n', 'M-Left', 'select-pane', '-L']);   // Alt+Left  → Claude
-  tmux(['bind-key', '-n', 'M-Right', 'select-pane', '-R']);  // Alt+Right → game
-  tmux(['set-option', '-g', 'status-right', ' click a pane · or Alt-←/→ · game: P play/pause · Q quit ']);
-  tmux(['set-option', '-g', 'status-right-length', '70']);
+  // ---- make it easy + obvious (all isolated to our socket) ----
+  // Switching:
+  tmux(['set-option', '-g', 'mouse', 'on']);                  // click a pane to focus it
+  tmux(['bind-key', '-n', 'M-Left', 'select-pane', '-L']);    // Alt+Left  → Claude
+  tmux(['bind-key', '-n', 'M-Right', 'select-pane', '-R']);   // Alt+Right → game
+  tmux(['bind-key', '-n', 'M-z', 'resize-pane', '-Z']);       // Alt+z     → zoom focused pane fullscreen
+  // Show clearly which pane is active: bright border on the focused pane, dim on
+  // the other, plus a labelled header row over each pane.
+  tmux(['set-option', '-g', 'pane-border-status', 'top']);
+  tmux(['set-option', '-g', 'pane-border-format', ' #{pane_title} ']);
+  tmux(['set-option', '-g', 'pane-active-border-style', 'fg=green,bold']);
+  tmux(['set-option', '-g', 'pane-border-style', 'fg=colour240']);
+  tmux(['set-option', '-g', 'automatic-rename', 'off']);
+  tmux(['select-pane', '-t', `${session}:0.0`, '-T', 'CLAUDE  ◀  click or Alt-Left  ·  type here']);
+  tmux(['select-pane', '-t', `${session}:0.1`, '-T', 'GAME  ▶  Alt-z zoom · P play/pause · Q quit']);
+  tmux(['select-pane', '-t', `${session}:0.0`]);              // focus Claude to start
+  // Persistent hint bar:
+  tmux(['set-option', '-g', 'status-left', ' kaboom.claude ']);
+  tmux(['set-option', '-g', 'status-right', ' switch: click / Alt-←/→   ·   zoom game: Alt-z   ·   quit game: Q ']);
+  tmux(['set-option', '-g', 'status-right-length', '80']);
+  tmux(['set-option', '-g', 'status-style', 'bg=colour236,fg=colour252']);
 
   if (!claudeOk) {
     log('Note: `claude` was not found on PATH; start Claude Code in the left pane yourself.');
   }
-  log('Opening Claude ⟷ game split…');
-  log('  • Switch panes: CLICK a pane, or press Alt-←/Alt-→ (no prefix needed).');
-  log('  • In the game: arrow keys / WASD move · F fire · P play/pause · Q quit.');
-  log('  • The game plays while Claude is thinking, and pauses when it replies.');
+  log('');
+  log('  Claude is on the LEFT.   The game is on the RIGHT.');
+  log('  ────────────────────────────────────────────────');
+  log('  Switch panes   →  click a pane, or press  Alt-←  /  Alt-→');
+  log('  Play bigger    →  Alt-z  zooms the game fullscreen (Alt-z again = back)');
+  log('  In the game    →  arrows/WASD move · F fire · P play/pause · Q quit');
+  log('  Auto           →  the game plays while Claude is thinking, pauses when it replies');
+  log('');
 
   if (process.env.TMUX) {
-    log('  • (You\'re already in tmux — this opens as a nested session; Alt-←/→ and');
-    log('     mouse still work. Detach the inner one with Ctrl-b d.)');
+    log('  (You\'re already in tmux — this opens nested; Alt-keys and mouse still work.)');
   }
 
   const at = tmux(['attach-session', '-t', session], { stdio: 'inherit' });

@@ -25,11 +25,16 @@ That's it — Claude and the game open side by side:
 └──────────────┘└──────────────┘
 ```
 
-- **Switch panes (easy):** just **click** a pane, or press **Alt-←/Alt-→** — no tmux prefix needed. (Classic `Ctrl-b` arrows work too.)
+Each pane is **labelled** (`CLAUDE ◀` / `GAME ▶`) and the **focused pane has a bright green border** so it's always clear which one has your keys.
+
+- **Switch panes (easy):** **click** a pane, or press **Alt-←/Alt-→** — no tmux prefix needed.
+- **Play bigger:** press **Alt-z** to zoom the game fullscreen (readable for real playing); **Alt-z** again to go back to the split.
 - **Auto play/pause:** the game **plays while Claude is thinking** and **pauses when it replies** (a banner shows the controls).
-- **Play anytime:** press **`P`** in the game to play or pause manually — so you can keep playing even while Claude is idle.
-- **Game controls:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use · `1`–`7` weapons · `Tab` map · `Esc` menu · `Q` quit.
-- Controls stay visible in the tmux status bar. It runs on its own tmux socket, so your normal tmux config is untouched. Remove the pause hooks later with `npx kaboom.claude unhook`.
+- **Play anytime:** press **`P`** to play/pause manually — keep playing even while Claude is idle.
+- **Game controls:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use · `1`–`7` weapons · `Q` quit.
+- Everything stays visible in the tmux status bar. It runs on its own tmux socket, so your normal tmux config is untouched. Remove the pause hooks later with `npx kaboom.claude unhook`.
+
+> **On readability:** the game is real Doom pixels drawn with terminal half-blocks — it looks best with lots of space, so **Alt-z to zoom** when you actually want to play, and un-zoom to keep an eye on Claude.
 
 > **Controls feel:** on terminals with the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) it negotiates real key press/release for crisp strafe/run; elsewhere it falls back to autorepeat. Rendering uses **frame-diffing** so it stays smooth even over SSH.
 
