@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="250" viewBox="0 0 820 250" font-family="'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace">
+  <style>
+    text { font-size: 15.5px; }
+    .b { font-weight: 700; }
+  </style>
+
+  <!-- window -->
+  <rect x="2" y="2" width="816" height="246" rx="10" fill="#11111b" stroke="#313244" stroke-width="1.5"/>
+
+  <!-- title bar: a plain terminal, NOT tmux/Claude -->
+  <circle cx="26" cy="24" r="6" fill="#f38ba8"/>
+  <circle cx="46" cy="24" r="6" fill="#f9e2af"/>
+  <circle cx="66" cy="24" r="6" fill="#a6e3a1"/>
+  <text x="410" y="29" text-anchor="middle" fill="#6c7086">Terminal — your shell (bash / zsh)</text>
+  <line x1="12" y1="46" x2="808" y2="46" stroke="#313244" stroke-width="1"/>
+
+  <g xml:space="preserve">
+    <!-- guidance comment -->
+    <text x="30" y="92" fill="#6c7086"># a normal terminal prompt — <tspan fill="#f38ba8" class="b">not</tspan> inside an existing Claude session</text>
+
+    <!-- the shell prompt with the command typed -->
+    <text x="30" y="132"><tspan fill="#a6e3a1" class="b">you@laptop</tspan><tspan fill="#6c7086">:</tspan><tspan fill="#89b4fa" class="b">~/code</tspan><tspan fill="#6c7086">$ </tspan><tspan fill="#cdd6f4" class="b">npx snake.claude</tspan></text>
+    <!-- cursor block at the end of the command -->
+    <rect x="358" y="120" width="9" height="17" fill="#cdd6f4" opacity="0.8"/>
+
+    <!-- what happens next -->
+    <text x="30" y="196" fill="#fab387">↑ run it here — Claude Code opens with Snake in a pane beside it.</text>
+  </g>
+</svg>

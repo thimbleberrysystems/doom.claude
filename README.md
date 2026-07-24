@@ -4,9 +4,19 @@ Play **Snake** right next to Claude Code. The snake runs **while Claude is think
 
 <p align="center">
   <img src="docs/screenshot.svg" alt="snake.claude — Claude Code on the left, Snake in a tmux pane on the right" width="720">
+  <br>
+  <em>After you run one command: Claude Code on the left, Snake in the pane beside it.</em>
 </p>
 
 ## Quick start
+
+### Where do I run it?
+
+In your **normal terminal** — an ordinary shell prompt (bash/zsh). **Not** inside an already-running Claude session: `snake.claude` *starts Claude for you*, right next to the game.
+
+<p align="center">
+  <img src="docs/run-here.svg" alt="Run the command at a normal shell prompt, not inside Claude" width="640">
+</p>
 
 One command — no clone, no install (needs only Node.js):
 
@@ -17,10 +27,10 @@ npx snake.claude
 That's it. The launcher:
 
 1. Installs two tiny **hooks** into `~/.claude/settings.json` (backed up first).
-2. Opens a **tmux split** — Claude Code on the left, Snake on the right.
+2. Opens a **tmux split** and **launches Claude Code in it** — Claude on the left, Snake on the right.
 3. Drops you in the Claude pane, ready to type.
 
-Submit a prompt → the snake starts moving. When Claude finishes → it freezes with a *"your move"* overlay, score intact. Next prompt picks up right where you left off.
+Submit a prompt → the snake starts moving. When Claude finishes → it freezes with a *"your move"* overlay, score intact. Next prompt picks up right where you left off. (That split above ⬆️ is what you'll land in.)
 
 ## Controls
 
