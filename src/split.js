@@ -92,6 +92,11 @@ function run() {
   tmux(['bind-key', '-n', 'M-Left', 'select-pane', '-L']);
   tmux(['bind-key', '-n', 'M-Right', 'select-pane', '-R']);
   tmux(['bind-key', '-n', 'M-z', 'resize-pane', '-Z']);
+  // Move the divider: DRAG it with the mouse (mouse is on), or nudge it with
+  // Alt-Shift-Left/Right. `-r` makes them repeatable so you can hold the combo
+  // to slide it. These grow/shrink whichever pane is focused.
+  tmux(['bind-key', '-n', '-r', 'M-S-Left', 'resize-pane', '-L', '4']);
+  tmux(['bind-key', '-n', '-r', 'M-S-Right', 'resize-pane', '-R', '4']);
 
   // The FOCUSED pane gets a thick bright-green outline + a labelled header, so
   // it's always obvious which one has your keys.
@@ -130,7 +135,8 @@ function run() {
   log('  Click a pane to switch — or the ◀ Claude / Game ▶ buttons in the bottom bar.');
   log('  The game plays only while you\'re in it, and waits when you\'re in Claude.');
   log('  When Claude replies, a "🔔 ready" note shows in the game — switch whenever you like.');
-  log('  In the game: arrows/WASD move · Space fire · E use · Q quit. Zoom fullscreen: Alt-z or ⤢ button.');
+  log('  Resize the split: drag the divider, or Alt-Shift-←/→. Zoom fullscreen: Alt-z or ⤢ button.');
+  log('  In the game: arrows/WASD move · Space fire · E use · Q quit.');
   log('');
 
   if (process.env.TMUX) {

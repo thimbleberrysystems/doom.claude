@@ -22,6 +22,7 @@ That's it — Claude and the game open side by side, each pane **labelled** (`�
 - **You stay in control.** It plays while you're in its pane and quietly **waits when you switch to Claude**. It **never switches you back** to Claude on its own.
 - **Read Claude at your own pace.** When the reply's ready a **⚠ "Claude replied" note** appears in the game (no interruption). Go read it whenever *you* like — `Alt-←` or click the left pane.
 - **Switch panes:** **click** a pane, the **◀ Claude** / **Game ▶** buttons in the bottom bar, or **Alt-←/→**. The green outline moves with you.
+- **Resize the split:** **drag the divider** with your mouse, or nudge it with **Alt-Shift-←/→** (hold to slide it) — give the game more room, or hand it back to Claude, however you like.
 - **Zoom:** the **⤢ Zoom** button (or **Alt-z**) blows the game up to fullscreen for real playing; press again to return.
 - **Close the game:** the **✕ Close game** button (or **Q**) closes the **game only — Claude keeps running**. The button then becomes **✕ Close Claude**, which ends the whole split.
 
