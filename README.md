@@ -1,6 +1,6 @@
 # kaboom.claude 😈
 
-**A real Doom, in your terminal, in one command.** No install, no WAD hunting, no compiler — `npx kaboom.claude` runs the actual Doom engine (doomgeneric, compiled to WebAssembly) full-screen with truecolor half-block rendering. It ships **Freedoom** — a free, BSD-licensed, Doom-compatible game — so there's nothing to download and no proprietary assets.
+**A real terminal FPS, in one command.** No install, no WAD hunting, no compiler — `npx kaboom.claude` runs the [doomgeneric](https://github.com/ozkl/doomgeneric) engine (compiled to WebAssembly) full-screen with truecolor half-block rendering, playing **Freedoom** — a free, BSD-licensed, Doom-compatible game. Nothing to download, no proprietary assets.
 
 <p align="center">
   <img src="docs/freedoom-title.png" alt="Freedoom running in the terminal via kaboom.claude" width="600">
@@ -22,17 +22,17 @@ npx kaboom.claude
 
 ## Play it *next to* Claude
 
-Want Doom running while you use Claude Code? A full-screen game can't share one terminal with Claude, so this opens a **tmux split** — Claude on the left, real Doom on the right:
+Want the game running while you use Claude Code? A full-screen game can't share one terminal with Claude, so this opens a **tmux split** — Claude on the left, the game on the right:
 
 ```sh
 npx kaboom.claude split
 ```
 
-Focus the Doom pane (`Ctrl-b` then `→`) to play while you wait on a response; focus Claude to type. (Requires `tmux`; Linux/macOS/WSL.)
+Focus the game pane (`Ctrl-b` then `→`) to play while you wait on a response; focus Claude to type. (Requires `tmux`; Linux/macOS/WSL.)
 
 ```
-┌─ Claude ─────┐┌─ DOOM ───────┐
-│ > working…   ││  ▓█ imp!      │
+┌─ Claude ─────┐┌─ kaboom ─────┐
+│ > working…   ││  ▓█ enemy!    │
 │              ││  HEALTH 80    │
 └──────────────┘└──────────────┘
 ```
