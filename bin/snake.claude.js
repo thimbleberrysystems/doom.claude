@@ -32,7 +32,7 @@ function help() {
 
 Usage:
   snake.claude              Install the play/pause hooks and open the
-                            tmux split (Claude left, Snake right).
+  snake.claude install      tmux split (Claude left, Snake right).
   snake.claude uninstall    Remove the hooks from ~/.claude/settings.json.
   snake.claude game         Run only the game (what the launcher puts in
                             the right pane).
@@ -111,6 +111,7 @@ function main() {
 
   switch (arg) {
     case '':
+    case 'install':
     case 'launch':
     case 'start':
       return launch();
