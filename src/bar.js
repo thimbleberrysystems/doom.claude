@@ -15,8 +15,8 @@ const HINT = `#[fg=colour246]Space to shoot · E to use#[default]   `;
 // Normal split bar. `minimized` flips the toggle button's arrow + action.
 function statusRight(minimized) {
   const toggle = minimized
-    ? btn('restore', '‹‹', 'colour238')   // game is a sliver → click to bring it back
-    : btn('minimize', '››', 'colour238'); // game is open → click to minimize it
+    ? btn('restore', '‹‹ Restore', 'colour238')   // game is a sliver → click to bring it back
+    : btn('minimize', '›› Minimize', 'colour238'); // game is open → click to minimize it
   return HINT +
     btn('claude', '◀ Claude', 'colour24') + btn('game', 'Game ▶', 'colour28') +
     toggle + btn('zoom', '⤢ Zoom', 'colour238') +
