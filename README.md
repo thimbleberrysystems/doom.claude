@@ -36,11 +36,16 @@ Submit a prompt → the snake starts moving. When Claude finishes → it freezes
 
 ## How it works
 
-- **Signal file** — `~/.claude/snake/state` holds a single word, `play` or `pause`.
-- **Hooks** — Claude Code's `UserPromptSubmit` hook writes `play`; the `Stop` hook writes `pause`. Fast shell one-liners, no processes spawned.
-- **Game** — polls that file each tick. Zero dependencies: raw ANSI + Node's TTY. It always restores your terminal cleanly, even on a crash.
+- **Per-session id** — each launch mints a unique `SNAKE_CLAUDE_ID`, passed to **both** panes. Claude's hooks run as child processes of the `claude` in the left pane, so they inherit it too.
+- **Signal file** — `~/.claude/snake/<id>.state` holds a single word, `play` or `pause`. One file per session.
+- **Hooks** — Claude Code's `UserPromptSubmit` hook writes `play`; the `Stop` hook writes `pause`, into *that session's* file. Fast shell one-liners, no processes spawned, guarded so a Claude session with no snake attached does nothing.
+- **Game** — polls its own file each tick. Zero dependencies: raw ANSI + Node's TTY. It always restores your terminal cleanly, even on a crash, and removes its state file on quit.
 
 The hooks carry a `# snake-claude` marker, so installing is idempotent and uninstalling is surgical.
+
+### Multiple sessions
+
+Run as many as you like — every launch gets its own id, tmux session, and state file, so two Claude+Snake pairs never touch each other's play/pause signal. Run `snake-claude game` on its own (no id) for standalone free-play.
 
 ## Uninstall
 
@@ -57,10 +62,6 @@ npx github:thimbleberrysystems/snake.claude uninstall
 - **Claude Code** on your `PATH` (the left pane runs `claude`).
 
 > Native Windows (bare cmd/PowerShell) isn't supported — use **WSL**, where tmux runs fine.
-
-## Known limitation
-
-There is one global signal file, so it assumes a single active Claude + Snake pair. Running two Claude Code sessions at once would share the same play/pause signal. Per-session scoping is planned.
 
 ## License
 

@@ -6,9 +6,6 @@
 // regardless of what the user's terminal was doing before.
 
 const { spawnSync } = require('child_process');
-const path = require('path');
-
-const SESSION = 'snake-claude';
 
 function have(cmd) {
   const r = spawnSync('sh', ['-c', `command -v ${cmd}`], { stdio: 'ignore' });
@@ -32,46 +29,47 @@ function preflight() {
   };
 }
 
-// Build (or reuse) the split session. gameCmd is the shell command that runs the
-// game in the right pane. Returns { ok, message, session }.
-function buildSession({ gameCmd, snakeWidth = 34 }) {
+// Build the split session. `session` is a unique name for this launch, `gameCmd`
+// runs the game (right pane) and `claudeCmd` runs Claude (left pane) — both
+// carry the SNAKE_CLAUDE_ID. Returns { ok, message, session }.
+function buildSession({ session, gameCmd, claudeCmd, snakeWidth = 34 }) {
   if (!have('tmux')) {
     return { ok: false, message: 'tmux is not installed.' };
   }
 
-  // If our session already exists (a previous launch), just re-attach to it
-  // rather than stacking a second one.
-  if (sessionExists(SESSION)) {
-    return attach(SESSION, { existing: true });
+  // Unique session per launch, so multiple splits can coexist. If somehow the
+  // name is taken (same id twice), just re-attach rather than stacking.
+  if (sessionExists(session)) {
+    return attach(session, { existing: true });
   }
 
-  // Left pane: a login-ish shell running claude. We run it through the user's
-  // shell so PATH/nvm/etc. resolve exactly as in a normal terminal.
+  // Panes run through the user's shell so PATH/nvm/etc. resolve exactly as in a
+  // normal terminal.
   const shell = process.env.SHELL || 'sh';
 
-  let r = tmux(['new-session', '-d', '-s', SESSION, '-n', 'claude', shell]);
+  let r = tmux(['new-session', '-d', '-s', session, '-n', 'claude', shell]);
   if (r.status !== 0) {
     return { ok: false, message: `tmux new-session failed: ${(r.stderr || '').trim()}` };
   }
 
   // Right pane for the snake.
-  r = tmux(['split-window', '-h', '-t', `${SESSION}:0`, shell]);
+  r = tmux(['split-window', '-h', '-t', `${session}:0`, shell]);
   if (r.status !== 0) {
-    tmux(['kill-session', '-t', SESSION]);
+    tmux(['kill-session', '-t', session]);
     return { ok: false, message: `tmux split-window failed: ${(r.stderr || '').trim()}` };
   }
 
   // Give the snake a fixed, comfortable width; Claude keeps the rest.
-  tmux(['resize-pane', '-t', `${SESSION}:0.1`, '-x', String(snakeWidth)]);
+  tmux(['resize-pane', '-t', `${session}:0.1`, '-x', String(snakeWidth)]);
 
   // Kick off the game on the right, then Claude on the left.
-  tmux(['send-keys', '-t', `${SESSION}:0.1`, gameCmd, 'Enter']);
-  tmux(['send-keys', '-t', `${SESSION}:0.0`, 'claude', 'Enter']);
+  tmux(['send-keys', '-t', `${session}:0.1`, gameCmd, 'Enter']);
+  tmux(['send-keys', '-t', `${session}:0.0`, claudeCmd, 'Enter']);
 
   // Focus Claude so the user starts typing prompts immediately.
-  tmux(['select-pane', '-t', `${SESSION}:0.0`]);
+  tmux(['select-pane', '-t', `${session}:0.0`]);
 
-  return attach(SESSION, { existing: false });
+  return attach(session, { existing: false });
 }
 
 // Attach interactively. If we are already inside tmux, nesting an attach errors,
@@ -87,12 +85,11 @@ function attach(session, meta = {}) {
   return { ok: true, message: meta.existing ? 'Re-attached to existing session.' : 'Attached.', session };
 }
 
-function killSession() {
-  if (sessionExists(SESSION)) tmux(['kill-session', '-t', SESSION]);
+function killSession(session) {
+  if (sessionExists(session)) tmux(['kill-session', '-t', session]);
 }
 
 module.exports = {
-  SESSION,
   have,
   preflight,
   buildSession,

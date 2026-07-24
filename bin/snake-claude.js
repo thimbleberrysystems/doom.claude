@@ -8,12 +8,17 @@
 //   snake-claude game                          → run just the game (used inside the pane)
 //   snake-claude --help                        → usage
 
-const path = require('path');
+const crypto = require('crypto');
 const state = require('./../src/state');
 const hooks = require('./../src/hooks');
 const tmux = require('./../src/tmux');
 
-const GAME_PATH = path.join(__dirname, '..', 'src', 'game.js');
+// A short, shell-safe id unique to this launch. It names the tmux session, the
+// SNAKE_CLAUDE_ID env var (seen by both panes and Claude's hooks), and the
+// per-session state file — tying one Claude to one Snake with no cross-talk.
+function newSessionId() {
+  return crypto.randomBytes(4).toString('hex');
+}
 
 function log(msg) {
   process.stdout.write(msg + '\n');
@@ -62,9 +67,15 @@ function launch() {
     log('');
   }
 
-  // Make sure the signal file exists and starts paused (Claude is idle at launch).
+  // Unique id for this launch, shared by both panes and the hooks.
+  const id = newSessionId();
+  const session = `snake-claude-${id}`;
+
+  // Prepare the per-session signal file (starts paused — Claude is idle at
+  // launch) and sweep away any files left by earlier crashed sessions.
   state.ensureDir();
-  state.write(state.PAUSE);
+  state.pruneStale();
+  state.write(id, state.PAUSE);
 
   // Install the hooks that flip play/pause. Report but do not abort the launch
   // on a soft failure — the game is still playable, just not auto-controlled.
@@ -75,15 +86,18 @@ function launch() {
   }
   log('');
 
-  // Command the right pane runs. Prefer this same CLI so paths resolve via the
-  // package; fall back to invoking the game file directly.
+  // Both panes carry SNAKE_CLAUDE_ID so Claude's hooks (child processes of the
+  // claude in the left pane) write to THIS session's state file, and the game
+  // in the right pane watches that same file.
   const self = process.argv[1];
-  const gameCmd = `node ${shellQuote(self)} game`;
+  const gameCmd = `SNAKE_CLAUDE_ID=${id} node ${shellQuote(self)} game`;
+  const claudeCmd = `SNAKE_CLAUDE_ID=${id} claude`;
 
   log('Opening tmux split (Claude ⟷ Snake)…');
-  const built = tmux.buildSession({ gameCmd });
+  const built = tmux.buildSession({ session, gameCmd, claudeCmd });
   if (!built.ok) {
     log(`Could not open the tmux split: ${built.message}`);
+    state.remove(id);
     process.exit(1);
   }
 }

@@ -8,6 +8,11 @@
 
 const state = require('./state');
 
+// Which Claude session are we coupled to? The launcher passes a unique id via
+// SNAKE_CLAUDE_ID to both this game and the claude process (whose hooks write
+// the matching <id>.state). No id → standalone free-play, no coupling.
+const SESSION_ID = process.env.SNAKE_CLAUDE_ID || null;
+
 // ---- ANSI helpers ---------------------------------------------------------
 const ESC = '\x1b[';
 const ALT_ON = '\x1b[?1049h';
@@ -50,6 +55,8 @@ function teardown() {
   try {
     inp.pause();
   } catch (_) {}
+  // Remove our per-session signal file so nothing lingers after we quit.
+  if (SESSION_ID) state.remove(SESSION_ID);
 }
 
 // Restore the terminal on EVERY exit path — clean quit, Ctrl-C, kill, or crash.
@@ -79,7 +86,8 @@ const game = {
   score: 0,
   high: state.readHighScore(),
   over: false,
-  signal: state.PAUSE, // start paused: Claude isn't working at launch
+  // Coupled: start paused (Claude is idle at launch). Standalone: free-play.
+  signal: SESSION_ID ? state.PAUSE : state.PLAY,
   lastMtime: -1,
   tooSmall: false,
 };
@@ -170,9 +178,10 @@ function onKey(buf) {
 
 // ---- update ---------------------------------------------------------------
 function pollSignal() {
-  const mtime = state.stateMtimeMs();
+  if (!SESSION_ID) return; // standalone free-play: no coupling, always PLAY
+  const mtime = state.stateMtimeMs(SESSION_ID);
   if (mtime !== game.lastMtime) {
-    const sig = state.read();
+    const sig = state.read(SESSION_ID);
     if (sig) game.signal = sig; // ignore null (missing/garbage): hold last state
     game.lastMtime = mtime;
   }

@@ -1,11 +1,12 @@
 'use strict';
 
-// The play/pause signal that couples the game to Claude's activity.
+// The play/pause signal that couples a game to ONE Claude session.
 //
-// Design: one tiny file holding a single token, "play" or "pause". Claude Code
-// hooks overwrite it (UserPromptSubmit -> play, Stop -> pause); the game polls
-// it every tick. This deliberately avoids signals/FIFOs so nothing can wedge —
-// the worst case is reading a stale value for a single frame.
+// Design: each launch gets a unique id (SNAKE_CLAUDE_ID). The signal lives in a
+// per-session file ~/.claude/snake/<id>.state holding a single token, "play" or
+// "pause". Claude Code hooks — which inherit SNAKE_CLAUDE_ID from the claude
+// process they run under — overwrite it; the matching game polls it each tick.
+// Per-session files mean multiple concurrent Claude sessions never collide.
 
 const os = require('os');
 const fs = require('fs');
@@ -17,32 +18,39 @@ const PAUSE = 'pause';
 // ~/.claude/snake/ — colocated with Claude Code's own config so it is easy to
 // find and clean up. We intentionally do NOT depend on $CLAUDE_* env vars.
 const DIR = path.join(os.homedir(), '.claude', 'snake');
-const STATE_FILE = path.join(DIR, 'state');
-const HIGHSCORE_FILE = path.join(DIR, 'highscore');
+const HIGHSCORE_FILE = path.join(DIR, 'highscore'); // one high score across all sessions
+
+function stateFile(id) {
+  return path.join(DIR, `${id}.state`);
+}
 
 // The exact shell command used by the install hooks. Kept here so the launcher,
-// the installer, and any docs all agree on one source of truth. The trailing
-// "# snake-claude" marker is what makes install idempotent and uninstall exact.
+// the installer, and any docs all agree on one source of truth.
+//   - Guarded on $SNAKE_CLAUDE_ID so a plain Claude session (no snake attached)
+//     does nothing and exits 0 — the hooks are global but harmless elsewhere.
+//   - The trailing "# snake-claude" marker makes install idempotent and
+//     uninstall exact.
 const MARKER = '# snake-claude';
 function hookCommand(token) {
-  // Portable across bash/zsh on Linux/macOS/WSL. mkdir -p is a no-op if present.
-  return `mkdir -p "$HOME/.claude/snake" && printf ${token} > "$HOME/.claude/snake/state"  ${MARKER}`;
+  // Portable across bash/zsh on Linux/macOS/WSL. Always exits 0.
+  return (
+    `if [ -n "$SNAKE_CLAUDE_ID" ]; then mkdir -p "$HOME/.claude/snake" && ` +
+    `printf ${token} > "$HOME/.claude/snake/$SNAKE_CLAUDE_ID.state"; fi  ${MARKER}`
+  );
 }
 
 function ensureDir() {
   try {
     fs.mkdirSync(DIR, { recursive: true });
-  } catch (_) {
-    // If we cannot create it, read()/write() degrade gracefully below.
-  }
+  } catch (_) {}
 }
 
-// Read the current signal. Never throws: a missing / empty / garbage / mid-write
-// file yields null, and callers hold their last known state instead.
-function read() {
+// Read the current signal for a session. Never throws: a missing / empty /
+// garbage / mid-write file yields null, and callers hold their last state.
+function read(id) {
   let raw;
   try {
-    raw = fs.readFileSync(STATE_FILE, 'utf8');
+    raw = fs.readFileSync(stateFile(id), 'utf8');
   } catch (_) {
     return null;
   }
@@ -53,17 +61,57 @@ function read() {
 }
 
 // Atomic write via temp-file + rename so a poller never sees a half-written file.
-function write(token) {
+function write(id, token) {
   if (token !== PLAY && token !== PAUSE) return false;
   ensureDir();
-  const tmp = `${STATE_FILE}.tmp`;
+  const target = stateFile(id);
+  const tmp = `${target}.tmp`;
   try {
     fs.writeFileSync(tmp, token);
-    fs.renameSync(tmp, STATE_FILE);
+    fs.renameSync(tmp, target);
     return true;
   } catch (_) {
     try { fs.unlinkSync(tmp); } catch (_) {}
     return false;
+  }
+}
+
+// Remove a session's state file (called on game exit to avoid leftovers).
+function remove(id) {
+  try { fs.unlinkSync(stateFile(id)); } catch (_) {}
+  try { fs.unlinkSync(`${stateFile(id)}.tmp`); } catch (_) {}
+}
+
+// mtime helper so the game only re-reads the file when it actually changes.
+function stateMtimeMs(id) {
+  try {
+    return fs.statSync(stateFile(id)).mtimeMs;
+  } catch (_) {
+    return 0;
+  }
+}
+
+// Sweep away state files left behind by sessions that crashed without cleanup.
+// Conservative: only touches *.state / *.state.tmp older than 24h.
+function pruneStale(maxAgeMs = 24 * 60 * 60 * 1000) {
+  let now;
+  try {
+    now = Date.now();
+  } catch (_) {
+    return; // Date.now unavailable in some sandboxes; skip pruning
+  }
+  let entries;
+  try {
+    entries = fs.readdirSync(DIR);
+  } catch (_) {
+    return;
+  }
+  for (const name of entries) {
+    if (!name.endsWith('.state') && !name.endsWith('.state.tmp')) continue;
+    const p = path.join(DIR, name);
+    try {
+      if (now - fs.statSync(p).mtimeMs > maxAgeMs) fs.unlinkSync(p);
+    } catch (_) {}
   }
 }
 
@@ -84,27 +132,20 @@ function writeHighScore(score) {
   } catch (_) {}
 }
 
-// mtime helper so the game only re-reads the file when it actually changes.
-function stateMtimeMs() {
-  try {
-    return fs.statSync(STATE_FILE).mtimeMs;
-  } catch (_) {
-    return 0;
-  }
-}
-
 module.exports = {
   PLAY,
   PAUSE,
   DIR,
-  STATE_FILE,
   HIGHSCORE_FILE,
   MARKER,
+  stateFile,
   hookCommand,
   ensureDir,
   read,
   write,
+  remove,
+  stateMtimeMs,
+  pruneStale,
   readHighScore,
   writeHighScore,
-  stateMtimeMs,
 };
