@@ -29,7 +29,7 @@ function help() {
 
   npx kaboom.claude --help     Show this help.
 
-Controls (in the game): WASD / arrows move · F or Ctrl fire · Space use ·
+Controls (in the game): WASD / arrows move · Space or F fire · E use ·
 1-7 weapons · Tab map · Esc menu · P play/pause · Q quit.
 
 No tmux?  npx kaboom.claude play   runs the game full-screen on its own.`);

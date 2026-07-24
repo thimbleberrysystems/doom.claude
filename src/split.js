@@ -127,7 +127,7 @@ function run() {
   log('  Click a pane to switch — or the ◀ Claude / Game ▶ buttons in the bottom bar.');
   log('  The game plays only while you\'re in it, and waits when you\'re in Claude.');
   log('  When Claude replies, a "🔔 ready" note shows in the game — switch whenever you like.');
-  log('  In the game: arrows/WASD move · F fire · Q quit. Zoom fullscreen: Alt-z or ⤢ button.');
+  log('  In the game: arrows/WASD move · Space fire · E use · Q quit. Zoom fullscreen: Alt-z or ⤢ button.');
   log('');
 
   if (process.env.TMUX) {

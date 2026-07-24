@@ -43,7 +43,8 @@ function mapKeyToDoom(data) {
     case 'd': return [K.STRAFE_R];
     case 'D': return [K.STRAFE_R, K.RSHIFT];
     case 'f': case 'F': return [K.FIRE];
-    case ' ': return [K.USE];
+    case ' ': return [K.FIRE];
+    case 'e': case 'E': return [K.USE]; // open doors / flip switches
     case '\r': case '\n': return [K.ENTER];
     case '\t': return [K.TAB];
     case '\x7f': case '\b': return [K.BACKSPACE];

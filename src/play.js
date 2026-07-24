@@ -204,7 +204,8 @@ function cpToDoom(cp, shift) {
     case 'a': keys = [K.STRAFE_L]; break;
     case 'd': keys = [K.STRAFE_R]; break;
     case 'f': keys = [K.FIRE]; break;
-    case ' ': keys = [K.USE]; break;
+    case ' ': keys = [K.FIRE]; break;
+    case 'e': keys = [K.USE]; break; // open doors / flip switches
   }
   if (cp === 13) keys = [K.ENTER];
   else if (cp === 9) keys = [K.TAB];
