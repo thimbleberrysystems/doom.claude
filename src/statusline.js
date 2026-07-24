@@ -1,6 +1,6 @@
 'use strict';
 
-// snake.claude — status-line runtime: a DOOM HUD for your Claude session.
+// doom.claude — status-line runtime: a DOOM HUD for your Claude session.
 //
 // Claude Code runs this once per refresh (~1s with refreshInterval:1), piping a
 // JSON context on stdin. We render TWO rows into the status line:
@@ -309,6 +309,6 @@ try {
   main();
 } catch (_) {
   try {
-    process.stdout.write(' DOOM · snake.claude\n ( >_< ) HEALTH ▓▓▓▓░ \n');
+    process.stdout.write(' DOOM · doom.claude\n ( >_< ) HEALTH ▓▓▓▓░ \n');
   } catch (__) {}
 }

@@ -30,5 +30,8 @@ Bundled third-party components
   shareware distribution terms, which permit free redistribution of the
   unmodified shareware WAD. It may not be modified or repackaged.
 
-DOOM is a trademark of id Software LLC. This project is not affiliated with or
-endorsed by id Software or ZeniMax.
+DOOM is a trademark of id Software LLC. Claude and Claude Code are trademarks of
+Anthropic PBC. This project is an independent, unofficial tool; it is not
+affiliated with, endorsed by, or sponsored by id Software, ZeniMax, or Anthropic.
+It bundles and redistributes no Anthropic software — the `split` and `hud`
+commands only invoke or configure the user's own separately-installed Claude Code.
