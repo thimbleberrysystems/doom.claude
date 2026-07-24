@@ -25,13 +25,17 @@ Bundled third-party components
   engine wrapper are derived from pi-doom (https://github.com/badlogic/pi-doom),
   GPL-2.0.
 
-- engine/doom1.wad is the DOOM shareware IWAD ("Knee-Deep in the Dead"),
-  © 1993 id Software. It is included unmodified and in whole under id Software's
-  shareware distribution terms, which permit free redistribution of the
-  unmodified shareware WAD. It may not be modified or repackaged.
+- Game data: engine/freedoom1.wad is Freedoom Phase 1
+  (https://freedoom.github.io/), a free, BSD-3-Clause-licensed Doom-compatible
+  IWAD that contains NO id Software assets. © 2001-2024 Contributors to the
+  Freedoom project; all rights reserved. Its license text and contributor
+  credits are bundled at engine/FREEDOOM-COPYING.txt and
+  engine/FREEDOOM-CREDITS.txt, and are reproduced here as required by the
+  BSD-3-Clause license.
 
-DOOM is a trademark of id Software LLC. Claude and Claude Code are trademarks of
-Anthropic PBC. This project is an independent, unofficial tool; it is not
-affiliated with, endorsed by, or sponsored by id Software, ZeniMax, or Anthropic.
-It bundles and redistributes no Anthropic software — the `split` command only
-launches the user's own separately-installed Claude Code alongside the game.
+This project ships NO id Software game assets. DOOM is a trademark of id
+Software LLC; Claude and Claude Code are trademarks of Anthropic PBC. This is an
+independent, unofficial tool, not affiliated with, endorsed by, or sponsored by
+id Software, ZeniMax, the Freedoom project, or Anthropic. It bundles and
+redistributes no Anthropic software — the `split` command only launches the
+user's own separately-installed Claude Code alongside the game.

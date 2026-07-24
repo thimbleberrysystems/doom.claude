@@ -2,7 +2,7 @@
 
 // Thin wrapper around the doomgeneric WebAssembly build (vendored in engine/).
 // Ported to CommonJS from pi-doom's doom-engine.ts (GPL-2.0). Loads the real
-// Doom engine under plain Node — no native deps — feeds the shareware WAD,
+// Doom engine under plain Node — no native deps — feeds the (Freedoom) WAD,
 // steps frames, and exposes the framebuffer + key input.
 
 const { readFileSync, existsSync } = require('node:fs');
@@ -10,7 +10,8 @@ const { join } = require('node:path');
 
 const BUILD_DIR = join(__dirname, '..', 'engine');
 const DOOM_JS = join(BUILD_DIR, 'doom.js');
-const WAD = join(BUILD_DIR, 'doom1.wad');
+// Freedoom — a free (BSD-licensed) Doom-compatible IWAD, no id Software assets.
+const WAD = join(BUILD_DIR, 'freedoom1.wad');
 
 class DoomEngine {
   constructor() {
@@ -41,7 +42,7 @@ class DoomEngine {
       preRun: [
         (m) => {
           m.FS_createPath('/', 'doom', true, true);
-          m.FS_createDataFile('/doom', 'doom1.wad', wadArray, true, false);
+          m.FS_createDataFile('/doom', 'freedoom1.wad', wadArray, true, false);
         },
       ],
     });
@@ -56,7 +57,7 @@ class DoomEngine {
 
   _create() {
     const m = this.module;
-    const args = ['doom', '-iwad', '/doom/doom1.wad'];
+    const args = ['doom', '-iwad', '/doom/freedoom1.wad'];
     const argPtrs = [];
     for (const arg of args) {
       const ptr = m._malloc(arg.length + 1);
