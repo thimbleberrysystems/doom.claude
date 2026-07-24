@@ -259,17 +259,9 @@ function updatePaused() {
 function tmuxSelf(args) {
   try { require('child_process').spawnSync('tmux', args, { stdio: 'ignore' }); } catch (_) {}
 }
-// Zoom the game pane fullscreen (only if not already zoomed) for readability.
-function ensureZoom() {
-  try {
-    const z = require('child_process')
-      .spawnSync('tmux', ['display-message', '-p', '#{window_zoomed_flag}'], { encoding: 'utf8' })
-      .stdout.trim();
-    if (z === '0') tmuxSelf(['resize-pane', '-Z']);
-  } catch (_) {}
-}
-// Read Claude's state. When Claude STARTS working, bring the game up so you can
-// play the wait. When Claude replies, only show a note — never switch you back.
+// Read Claude's state. When Claude STARTS working, bring the game into focus so
+// you can play the wait. When Claude replies, only show a note — never switch
+// you back.
 function pollClaude() {
   let m = 0;
   try { m = fs.statSync(ACT).mtimeMs; } catch (_) {}
@@ -279,11 +271,10 @@ function pollClaude() {
     if (s === 'busy') {
       claudeReady = false;
       prev = null;
-      // Focus the game pane, zoom it fullscreen (readable), and start playing.
-      // This is the ONLY automatic switch — and it's toward the game, never back
-      // to Claude. (Switching to Claude later un-zooms automatically.)
+      // Focus the game pane so it starts playing. This is the ONLY automatic
+      // switch — toward the game, never back to Claude. It does NOT zoom the
+      // pane fullscreen; you decide when to zoom (Alt-z / ⤢ button).
       if (SELF_PANE) tmuxSelf(['select-pane', '-t', SELF_PANE]);
-      ensureZoom();
       if (!focused) { focused = true; updatePaused(); }
     } else if (s === 'idle') {
       if (!claudeReady) { claudeReady = true; prev = null; }
