@@ -33,7 +33,7 @@ Each pane is **labelled** (`◀ CLAUDE` / `GAME ▶`) and the **focused pane get
 - **Switch:** **click** a pane, or the **◀ Claude** / **Game ▶** buttons in the bottom bar (or **Alt-←/→**). The green outline moves with you.
 - **Zoom:** the **⤢ Zoom** button (or **Alt-z**) blows the game up to fullscreen for real playing; again to return.
 - **Game keys:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use · `1`–`7` weapons · `Q` quit.
-- **Buttons:** `◀ Claude` · `Game ▶` · `⤢ Zoom` · `✕ Quit` (closes the split). Runs on its own tmux socket, so your normal tmux config is untouched; remove the pause hooks with `npx kaboom.claude unhook`.
+- **Buttons:** `◀ Claude` · `Game ▶` · `⤢ Zoom` · `✕ Close game` (closes the game only — **Claude keeps running**; `Q` does the same). Runs on its own tmux socket, so your normal tmux config is untouched; remove the pause hooks with `npx kaboom.claude unhook`.
 
 > **Controls feel:** on terminals with the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) it negotiates real key press/release for crisp strafe/run; elsewhere it falls back to autorepeat. Rendering uses **frame-diffing** so it stays smooth even over SSH.
 

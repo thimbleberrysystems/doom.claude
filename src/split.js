@@ -112,7 +112,7 @@ function run() {
   tmux(['set-option', '-g', 'status-left-length', '20']);
   tmux(['set-option', '-g', 'status-right',
     btn('claude', '◀ Claude', 'colour24') + btn('game', 'Game ▶', 'colour28') +
-    btn('zoom', '⤢ Zoom', 'colour238') + btn('quit', '✕ Quit', 'colour88')]);
+    btn('zoom', '⤢ Zoom', 'colour238') + btn('quit', '✕ Close game', 'colour88')]);
   tmux(['set-option', '-g', 'status-right-length', '90']);
   tmux(['set-option', '-g', 'status-style', 'bg=colour235,fg=colour252']);
   tmux(['bind-key', '-n', 'MouseDown1Status', 'run-shell', '-b',

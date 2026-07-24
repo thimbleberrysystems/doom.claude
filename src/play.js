@@ -60,6 +60,14 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
+// Quit the game. In a split, close only the game's pane (Claude keeps running);
+// standalone, just exit.
+function quitGame() {
+  teardown();
+  if (KID && SELF_PANE) tmuxSelf(['kill-pane', '-t', SELF_PANE]);
+  process.exit(0);
+}
+
 // ---- rendering --------------------------------------------------------------
 function pixel(fb, sw, sh, sx, sy) {
   if (sx < 0 || sy < 0 || sx >= sw || sy >= sh) return [0, 0, 0];
@@ -165,7 +173,7 @@ function cpToDoom(cp, shift) {
 
 // Parse a chunk of Kitty CSI sequences → drive the engine. Exposed for tests.
 function handleKitty(s, eng) {
-  if (s.indexOf('\x03') !== -1) { teardown(); process.exit(0); }
+  if (s.indexOf('\x03') !== -1) { quitGame(); }
   const re = /\x1b\[([0-9;:]*)([A-Za-z~])/g;
   let m;
   while ((m = re.exec(s))) {
@@ -179,8 +187,8 @@ function handleKitty(s, eng) {
     const ctrl = ((mod - 1) & 4) !== 0;
     let keys = [];
     if (fin === 'u') {
-      if (cp === 113 || cp === 81) { teardown(); process.exit(0); }   // q / Q
-      if (cp === 99 && ctrl) { teardown(); process.exit(0); }         // Ctrl+C
+      if (cp === 113 || cp === 81) { quitGame(); }   // q / Q
+      if (cp === 99 && ctrl) { quitGame(); }         // Ctrl+C
       keys = cpToDoom(cp, shift);
     } else if (fin === 'A') keys = shift ? [K.UP, K.RSHIFT] : [K.UP];
     else if (fin === 'B') keys = shift ? [K.DOWN, K.RSHIFT] : [K.DOWN];
@@ -300,7 +308,7 @@ async function start() {
         updatePaused();
       }
     }
-    if (s === '\x03' || s === 'q' || s === 'Q') { teardown(); process.exit(0); }
+    if (s === '\x03' || s === 'q' || s === 'Q') { quitGame(); }
     if (kittyEnabled) return handleKitty(s, engine);
     for (const key of mapKeyToDoom(s)) press(key);
   });

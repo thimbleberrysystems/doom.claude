@@ -21,7 +21,8 @@ function help() {
                                the reply's ready a 🔔 note shows and you return at
                                your own pace. The focused pane has a green
                                outline. Switch: click a pane, or the ◀ Claude /
-                               Game ▶ / ⤢ Zoom / ✕ Quit buttons. (Requires tmux.)
+                               Game ▶ / ⤢ Zoom / ✕ Close-game buttons (✕ and Q
+                               close the game only; Claude stays). (Requires tmux.)
 
   npx kaboom.claude unhook     Remove the pause-on-idle hooks kaboom added to
                                ~/.claude/settings.json.
@@ -65,7 +66,7 @@ function main() {
       if (range === 'claude') tx(['select-pane', '-t', claudePane]);    // switch to Claude
       else if (range === 'game') tx(['select-pane', '-t', gamePane]);   // switch to the game
       else if (range === 'zoom') tx(['resize-pane', '-Z', '-t', gamePane]);
-      else if (range === 'quit') tx(['kill-window', '-t', gamePane]);   // close the split
+      else if (range === 'quit') tx(['kill-pane', '-t', gamePane]);     // close ONLY the game pane; Claude stays
       process.exit(0);
       return;
     }
