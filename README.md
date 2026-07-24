@@ -1,83 +1,75 @@
-# snake.claude 🐍
+# snake.claude 🕹️
 
-Play **Snake** right next to Claude Code. The snake runs **while Claude is thinking**, and **pauses — keeping your score** — the moment Claude finishes and hands the keyboard back to you. A little something to do with those idle seconds.
+A tiny **arcade in your Claude Code status line**. It auto-plays **Pong** at the bottom of your terminal *and* doubles as a live readout of what Claude is doing — model, thinking/idle, context %, elapsed time, active agents. One command, no tmux, no extra window.
 
 <p align="center">
-  <img src="docs/screenshot.svg" alt="snake.claude — Claude Code on the left, Snake in a tmux pane on the right" width="720">
-  <br>
-  <em>After you run one command: Claude Code on the left, Snake in the pane beside it.</em>
+  <img src="docs/statusline.svg" alt="Claude Code with a two-row status line: a live HUD and an auto-playing Pong rally" width="760">
 </p>
 
 ## Quick start
 
-Run Claude **inside tmux**, then launch snake from **inside Claude** with `!`. One-time setup:
-
-```sh
-tmux            # 1. start tmux
-claude          # 2. start Claude Code inside it
-```
-
-Then type this **inside Claude** (the `!` prefix runs it in your shell):
-
-```
-!npx snake.claude
-```
-
-<p align="center">
-  <img src="docs/run-here.svg" alt="Type !npx snake.claude inside Claude, which is running in tmux" width="680">
-</p>
-
-Snake opens in a pane **right beside Claude**. Submit a prompt → the snake starts moving. When Claude replies → it freezes with a *"your move"* overlay, score intact. Next prompt picks up where you left off.
-
-> **Why inside tmux?** While Claude Code owns your keyboard, the snake needs its own pane to read the arrow keys. tmux provides that pane; the `!` command splits Claude's current window so the game lands next to it. Focus the snake pane (`Ctrl-b` then `→`) to steer.
-
-<details>
-<summary><b>Don't want the <code>!</code> flow? Launch a fresh split instead.</b></summary>
-
-From a **plain terminal** (not inside Claude), run:
+One command — needs only Node.js. Works from a normal shell **or** via `!` right inside Claude:
 
 ```sh
 npx snake.claude
 ```
 
-It creates a fresh tmux session with Claude + Snake pre-split and drops you in. Same game, it just starts Claude for you.
-</details>
+That's it. It edits `~/.claude/settings.json` (backed up first) to add a status line + a few hooks, and drops two rows at the bottom of Claude that refresh about once a second:
 
-## Controls
+```
+Opus 4.8 · ● thinking · ctx 42% · 4s · 2 agents      ← live HUD
+❚        ●                     ❚  3:2                 ← auto-play Pong
+```
 
-| Key | Action |
+If it doesn't appear immediately, reload settings with `/statusline` (or restart Claude Code).
+
+## Why is it auto-play (I can't steer it)?
+
+Because a status line **can't read your keyboard** — while Claude is running, your keys belong to Claude. The status line is the only spot a command can draw live content in the Claude view, and it's display-only. So the game plays itself, and instead of *controlling* it you get a genuinely useful **activity readout** for free. (This is also why there's no tmux or second window — none is needed.)
+
+## What the HUD shows
+
+| Field | Meaning |
 | --- | --- |
-| Arrow keys / `WASD` | Steer |
-| `q` | Quit the game |
-| `r` | Restart (after game over) |
+| `● thinking` / `○ idle` | whether Claude is currently generating (from hooks) |
+| `Opus 4.8` | the active model |
+| `ctx 42%` | context window used |
+| `4s` | elapsed time on the current turn |
+| `2 agents` | active subagents/tasks, when any are running |
 
-## How it works
+## Check your status-line height (optional)
 
-- **Window-keyed signal** — Claude and its snake share one tmux **window**, so the state file is keyed by that window's id: `~/.claude/snake/@N.state` holds a single word, `play` or `pause`. Nothing is injected into Claude's environment — both sides derive the same id from tmux.
-- **Hooks** — Claude Code's `UserPromptSubmit` hook writes `play`; the `Stop` hook writes `pause`, into the current window's file. Fast shell one-liners, no processes spawned, and guarded on `$TMUX` so a Claude session outside tmux (no snake attached) does nothing.
-- **Game** — polls its window's file each tick. Zero dependencies: raw ANSI + Node's TTY. It always restores your terminal cleanly, even on a crash, and removes its state file on quit.
+Status lines can render multiple rows, but the exact cap varies. To see yours:
 
-The hooks carry a `# snake.claude` marker, so installing is idempotent and uninstalling is surgical.
+```sh
+npx snake.claude probe     # shows numbered rows + the JSON fields available
+npx snake.claude install   # switch back to the game
+```
 
-### Multiple sessions
-
-Open snake in as many Claude windows as you like — each window has its own id and state file, so two Claude+Snake pairs never touch each other's play/pause signal. Run `snake.claude game` on its own (outside tmux) for standalone free-play.
+Count the numbered rows you can see — that's your height budget.
 
 ## Uninstall
 
-Removes only the snake.claude hooks; your other settings are untouched:
+Removes only what we added (and restores any status line you had before):
 
 ```sh
 npx snake.claude uninstall
 ```
 
+## How it works
+
+- **Status line** — `~/.claude/snake/statusline.js` runs each refresh (with `refreshInterval: 1`). It reads the JSON context Claude pipes in, advances Pong one tick, and prints two rows. It **persists game state to a file** between runs and is written to **never crash** the status bar.
+- **Hooks** — `UserPromptSubmit`/`Stop` flag busy/idle and stamp the turn's start time; `SubagentStart`/`SubagentStop` keep an agent count. Fast shell one-liners, tagged with a `# snake.claude` marker so install is idempotent and uninstall is surgical.
+
 ## Requirements
 
-- **tmux** (Linux, macOS, or WSL) — provides the side-by-side split.
 - **Node.js ≥ 16**.
-- **Claude Code** on your `PATH` (the left pane runs `claude`).
+- **Claude Code** (the status line + hooks are its features). Linux, macOS, or WSL.
 
-> Native Windows (bare cmd/PowerShell) isn't supported — use **WSL**, where tmux runs fine.
+## Roadmap
+
+- More mini-games (Snake, Space Invaders, aquarium, racer…) as a rotating roster.
+- A taller dashboard layout where the status-line height allows.
 
 ## License
 
