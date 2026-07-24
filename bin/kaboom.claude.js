@@ -25,7 +25,7 @@ function help() {
                              Claude left, the game right. The game plays while
                              Claude is thinking and pauses when it replies; press
                              P in the game to play/pause manually anytime.
-                             Switch panes: Ctrl-b then an arrow key. (Needs tmux.)
+                             Switch panes: click one, or Alt-←/→. (Needs tmux.)
 
   npx kaboom.claude unhook     Remove the pause-on-idle hooks that 'split' added
                              to ~/.claude/settings.json.

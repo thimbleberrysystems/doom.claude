@@ -1,20 +1,27 @@
 'use strict';
 
-// `kaboom.claude split` — open Claude and real Doom side by side in a tmux split.
-// Claude in the left pane, the Doom game in the right pane. Focus the Doom pane
-// (Ctrl-b then →) to play while you wait on Claude; focus Claude to type.
+// `kaboom.claude split` — open Claude and the game side by side in a tmux split.
+// Claude in the left pane, the game in the right pane.
+//
+// Switching is made beginner-friendly: it runs on a DEDICATED tmux socket (so
+// none of the user's own tmux config is touched), with mouse enabled (click a
+// pane to focus it) and Alt+Left/Right bound to switch panes with no prefix.
+// The classic Ctrl-b arrows still work too.
 
 const { spawnSync } = require('child_process');
 const crypto = require('crypto');
 const path = require('path');
 
 const GAME = path.join(__dirname, '..', 'bin', 'kaboom.claude.js');
+const SOCKET = 'kaboomclaude'; // isolated tmux server — our settings, not the user's
 
 function have(cmd) {
   return spawnSync('sh', ['-c', `command -v ${cmd}`], { stdio: 'ignore' }).status === 0;
 }
+// All tmux calls go to our private socket so mouse/keybindings/status don't
+// leak into the user's normal tmux sessions.
 function tmux(args, opts = {}) {
-  return spawnSync('tmux', args, { encoding: 'utf8', ...opts });
+  return spawnSync('tmux', ['-L', SOCKET, ...args], { encoding: 'utf8', ...opts });
 }
 function q(s) {
   return `'${String(s).replace(/'/g, `'\\''`)}'`;
@@ -42,7 +49,7 @@ function run() {
   const claudeOk = have('claude');
   const shell = process.env.SHELL || 'sh';
   const id = crypto.randomBytes(3).toString('hex');
-  const session = `kaboom-claude-${id}`;
+  const session = `kaboom-${id}`;
 
   // Install the pause-on-idle hooks so the game plays while Claude is thinking
   // and pauses when it replies. Both panes carry KABOOM_ID so the hooks (run by
@@ -55,7 +62,7 @@ function run() {
     ? `KABOOM_ID=${id} claude`
     : `echo "claude not found on PATH — start it here"; KABOOM_ID=${id} ${shell}`;
 
-  let r = tmux(['new-session', '-d', '-s', session, '-n', 'doom', shell]);
+  let r = tmux(['new-session', '-d', '-s', session, '-n', 'kaboom', shell]);
   if (r.status !== 0) {
     log(`tmux new-session failed: ${(r.stderr || '').trim()}`);
     process.exit(1);
@@ -72,22 +79,27 @@ function run() {
   tmux(['send-keys', '-t', `${session}:0.0`, claudeCmd, 'Enter']);
   tmux(['select-pane', '-t', `${session}:0.0`]);
 
-  // Persistent controls hint in the tmux status bar (always visible).
-  tmux(['set-option', '-t', session, 'status-right', ' Ctrl-b ←/→ switch panes · game: P play/pause · Q quit ']);
-  tmux(['set-option', '-t', session, 'status-right-length', '70']);
+  // ---- make switching intuitive (all isolated to our socket) ----
+  tmux(['set-option', '-g', 'mouse', 'on']);                 // click a pane to focus it
+  tmux(['bind-key', '-n', 'M-Left', 'select-pane', '-L']);   // Alt+Left  → Claude
+  tmux(['bind-key', '-n', 'M-Right', 'select-pane', '-R']);  // Alt+Right → game
+  tmux(['set-option', '-g', 'status-right', ' click a pane · or Alt-←/→ · game: P play/pause · Q quit ']);
+  tmux(['set-option', '-g', 'status-right-length', '70']);
 
   if (!claudeOk) {
     log('Note: `claude` was not found on PATH; start Claude Code in the left pane yourself.');
   }
   log('Opening Claude ⟷ game split…');
-  log('  • Ctrl-b then →  focus the game (arrow keys move · F fire · Q quit)');
-  log('  • Ctrl-b then ←  focus Claude');
+  log('  • Switch panes: CLICK a pane, or press Alt-←/Alt-→ (no prefix needed).');
+  log('  • In the game: arrow keys / WASD move · F fire · P play/pause · Q quit.');
   log('  • The game plays while Claude is thinking, and pauses when it replies.');
 
-  const inside = !!process.env.TMUX;
-  const at = inside
-    ? tmux(['switch-client', '-t', session], { stdio: 'inherit' })
-    : tmux(['attach-session', '-t', session], { stdio: 'inherit' });
+  if (process.env.TMUX) {
+    log('  • (You\'re already in tmux — this opens as a nested session; Alt-←/→ and');
+    log('     mouse still work. Detach the inner one with Ctrl-b d.)');
+  }
+
+  const at = tmux(['attach-session', '-t', session], { stdio: 'inherit' });
   if (at.status !== 0 && at.error) {
     log(`Could not attach: ${at.error.message}`);
     process.exit(1);

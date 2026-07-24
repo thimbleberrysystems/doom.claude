@@ -35,10 +35,10 @@ npx kaboom.claude split
 └──────────────┘└──────────────┘
 ```
 
-- **Switch panes:** `Ctrl-b` then `→` (game) / `←` (Claude). `Ctrl-b` `z` zooms a pane fullscreen.
-- **Auto play/pause:** the game **plays while Claude is thinking** and **pauses when it replies** (with a banner showing the controls).
+- **Switch panes (easy):** just **click** a pane, or press **Alt-←/Alt-→** — no tmux prefix needed. (Classic `Ctrl-b` arrows work too.)
+- **Auto play/pause:** the game **plays while Claude is thinking** and **pauses when it replies** (a banner shows the controls).
 - **Play anytime:** press **`P`** in the game to play or pause manually — so you can keep playing even while Claude is idle.
-- The switch keys stay visible in the tmux status bar. To remove the pause hooks later: `npx kaboom.claude unhook`.
+- The controls stay visible in the tmux status bar. Runs on its own tmux socket, so your normal tmux config is untouched. Remove the pause hooks later with `npx kaboom.claude unhook`.
 
 (Requires `tmux`; Linux/macOS/WSL.)
 

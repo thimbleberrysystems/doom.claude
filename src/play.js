@@ -223,9 +223,9 @@ function drawPausedBanner() {
   const msg = [
     '⏸  PAUSED — Claude is ready',
     '',
-    '  P          play now',
-    '  Ctrl-b ←   back to Claude',
-    '  Q          quit',
+    '  P                play now',
+    '  click / Alt-←    back to Claude',
+    '  Q                quit',
     '',
     'The game auto-plays while Claude is thinking.',
   ];
