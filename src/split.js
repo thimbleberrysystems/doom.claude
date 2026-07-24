@@ -108,13 +108,15 @@ function run() {
   // Clickable buttons in the bottom status bar. Clicks are dispatched back
   // through this CLI (`click <range>`) so the logic is JS, not tmux quoting.
   const btn = (name, label, bg) => `#[fg=colour231,bg=${bg}]#[range=user|${name}] ${label} #[norange]#[default] `;
-  tmux(['set-option', '-g', 'status-left',
-    ' kaboom.claude   #[fg=colour246]Space to shoot · E to use#[default]   ']);
-  tmux(['set-option', '-g', 'status-left-length', '48']);
+  tmux(['set-option', '-g', 'status-left', ' kaboom.claude   ']);
+  tmux(['set-option', '-g', 'status-left-length', '20']);
+  // The game pane is on the right, so the controls hint + buttons live in
+  // status-right (right-aligned) to sit under the game.
   tmux(['set-option', '-g', 'status-right',
+    `#[fg=colour246]Space to shoot · E to use#[default]   ` +
     btn('claude', '◀ Claude', 'colour24') + btn('game', 'Game ▶', 'colour28') +
     btn('zoom', '⤢ Zoom', 'colour238') + btn('quit', '✕ Close game', 'colour88')]);
-  tmux(['set-option', '-g', 'status-right-length', '90']);
+  tmux(['set-option', '-g', 'status-right-length', '120']);
   tmux(['set-option', '-g', 'status-style', 'bg=colour235,fg=colour252']);
   tmux(['bind-key', '-n', 'MouseDown1Status', 'run-shell', '-b',
     `node ${q(GAME)} click "#{mouse_status_range}" ${SOCKET} ${gamePane} ${claudePane}`]);
