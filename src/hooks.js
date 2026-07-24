@@ -167,7 +167,7 @@ function uninstall() {
   if (Object.keys(data.hooks).length === 0) delete data.hooks;
 
   if (!changed) {
-    return { ok: true, changed: false, message: 'No snake-claude hooks present — nothing to remove.' };
+    return { ok: true, changed: false, message: 'No snake.claude hooks present — nothing to remove.' };
   }
 
   backupOnce(!res.missing);
@@ -176,7 +176,7 @@ function uninstall() {
   } catch (err) {
     return { ok: false, changed: false, message: `Failed to write settings: ${err.message}` };
   }
-  return { ok: true, changed: true, message: 'Removed snake-claude hooks from settings.json.' };
+  return { ok: true, changed: true, message: 'Removed snake.claude hooks from settings.json.' };
 }
 
 module.exports = {

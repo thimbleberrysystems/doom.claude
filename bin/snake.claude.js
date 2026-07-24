@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-// snake-claude launcher.
+// snake.claude launcher.
 //
-//   npx github:<user>/snake-claude            → install hooks + open the split
-//   snake-claude uninstall                     → remove the hooks
-//   snake-claude game                          → run just the game (used inside the pane)
-//   snake-claude --help                        → usage
+//   npx snake.claude                → install hooks + open the split
+//   snake.claude uninstall          → remove the hooks
+//   snake.claude game               → run just the game (used inside the pane)
+//   snake.claude --help             → usage
 
 const crypto = require('crypto');
 const state = require('./../src/state');
@@ -25,18 +25,18 @@ function log(msg) {
 }
 
 function help() {
-  log(`snake-claude — play Snake beside Claude Code
+  log(`snake.claude — play Snake beside Claude Code
 
   The snake runs while Claude is thinking and pauses (keeping your score)
   when Claude finishes. Requires tmux (Linux / macOS / WSL).
 
 Usage:
-  snake-claude              Install the play/pause hooks and open the
+  snake.claude              Install the play/pause hooks and open the
                             tmux split (Claude left, Snake right).
-  snake-claude uninstall    Remove the hooks from ~/.claude/settings.json.
-  snake-claude game         Run only the game (what the launcher puts in
+  snake.claude uninstall    Remove the hooks from ~/.claude/settings.json.
+  snake.claude game         Run only the game (what the launcher puts in
                             the right pane).
-  snake-claude --help       Show this help.
+  snake.claude --help       Show this help.
 
 Controls:  arrows / WASD to steer · q quit · r restart`);
 }
@@ -54,7 +54,7 @@ function launch() {
   const pre = tmux.preflight();
 
   if (!pre.tmux) {
-    log('snake-claude needs tmux for the side-by-side split, and it is not installed.');
+    log('snake.claude needs tmux for the side-by-side split, and it is not installed.');
     log('');
     log(installInstructions());
     process.exit(1);
@@ -69,7 +69,7 @@ function launch() {
 
   // Unique id for this launch, shared by both panes and the hooks.
   const id = newSessionId();
-  const session = `snake-claude-${id}`;
+  const session = `snake.claude-${id}`;
 
   // Prepare the per-session signal file (starts paused — Claude is idle at
   // launch) and sweep away any files left by earlier crashed sessions.

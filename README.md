@@ -1,14 +1,10 @@
-# snake-claude 🐍
+# snake.claude 🐍
 
 Play **Snake** right next to Claude Code. The snake runs **while Claude is thinking**, and **pauses — keeping your score** — the moment Claude finishes and hands the keyboard back to you. A little something to do with those idle seconds.
 
-```
-┌──────────────┬─────────────┐
-│ Claude Code  │   SNAKE     │
-│ > working... │  ■■■◆   ●   │
-│              │  score 42   │
-└──────────────┴─────────────┘
-```
+<p align="center">
+  <img src="docs/screenshot.svg" alt="snake.claude — Claude Code on the left, Snake in a tmux pane on the right" width="720">
+</p>
 
 ## Quick start
 
@@ -41,15 +37,15 @@ Submit a prompt → the snake starts moving. When Claude finishes → it freezes
 - **Hooks** — Claude Code's `UserPromptSubmit` hook writes `play`; the `Stop` hook writes `pause`, into *that session's* file. Fast shell one-liners, no processes spawned, guarded so a Claude session with no snake attached does nothing.
 - **Game** — polls its own file each tick. Zero dependencies: raw ANSI + Node's TTY. It always restores your terminal cleanly, even on a crash, and removes its state file on quit.
 
-The hooks carry a `# snake-claude` marker, so installing is idempotent and uninstalling is surgical.
+The hooks carry a `# snake.claude` marker, so installing is idempotent and uninstalling is surgical.
 
 ### Multiple sessions
 
-Run as many as you like — every launch gets its own id, tmux session, and state file, so two Claude+Snake pairs never touch each other's play/pause signal. Run `snake-claude game` on its own (no id) for standalone free-play.
+Run as many as you like — every launch gets its own id, tmux session, and state file, so two Claude+Snake pairs never touch each other's play/pause signal. Run `snake.claude game` on its own (no id) for standalone free-play.
 
 ## Uninstall
 
-Removes only the snake-claude hooks; your other settings are untouched:
+Removes only the snake.claude hooks; your other settings are untouched:
 
 ```sh
 npx snake.claude uninstall

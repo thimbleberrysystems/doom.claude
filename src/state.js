@@ -28,9 +28,9 @@ function stateFile(id) {
 // the installer, and any docs all agree on one source of truth.
 //   - Guarded on $SNAKE_CLAUDE_ID so a plain Claude session (no snake attached)
 //     does nothing and exits 0 — the hooks are global but harmless elsewhere.
-//   - The trailing "# snake-claude" marker makes install idempotent and
+//   - The trailing "# snake.claude" marker makes install idempotent and
 //     uninstall exact.
-const MARKER = '# snake-claude';
+const MARKER = '# snake.claude';
 function hookCommand(token) {
   // Portable across bash/zsh on Linux/macOS/WSL. Always exits 0.
   return (

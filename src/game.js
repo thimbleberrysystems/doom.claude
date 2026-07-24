@@ -66,7 +66,7 @@ process.on('SIGTERM', () => { teardown(); process.exit(0); });
 process.on('uncaughtException', (err) => {
   teardown();
   // Surface the error after the terminal is usable again.
-  process.stderr.write(`\nsnake-claude crashed: ${err && err.stack ? err.stack : err}\n`);
+  process.stderr.write(`\nsnake.claude crashed: ${err && err.stack ? err.stack : err}\n`);
   process.exit(1);
 });
 
@@ -324,7 +324,7 @@ function loop() {
 
 function start() {
   if (!inp.isTTY || !out.isTTY) {
-    process.stderr.write('snake-claude: needs an interactive terminal (run it in a tmux pane).\n');
+    process.stderr.write('snake.claude: needs an interactive terminal (run it in a tmux pane).\n');
     process.exit(1);
   }
 
