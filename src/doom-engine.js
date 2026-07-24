@@ -25,7 +25,9 @@ class DoomEngine {
   async init() {
     if (!existsSync(DOOM_JS)) throw new Error(`Doom engine not found at ${DOOM_JS}`);
 
-    const wadArray = Array.from(new Uint8Array(readFileSync(WAD)));
+    // Pass the bytes as a Uint8Array directly (Emscripten accepts it) — avoids
+    // building a 28M-element JS array, so init is faster and lighter.
+    const wadArray = new Uint8Array(readFileSync(WAD));
 
     // The Emscripten glue is a factory module. Load it via `new Function` so it
     // works regardless of the host module system.

@@ -22,8 +22,12 @@ function help() {
                              Needs a real terminal (not Claude's \`!\`).
 
   npx kaboom.claude split      The game and Claude side by side in a tmux split —
-                             Claude left, the game right. Play while you wait
-                             on Claude. (Requires tmux.)
+                             Claude left, the game right. The game plays while
+                             Claude is thinking and pauses when it replies.
+                             Switch panes: Ctrl-b then an arrow key. (Needs tmux.)
+
+  npx kaboom.claude unhook     Remove the pause-on-idle hooks that 'split' added
+                             to ~/.claude/settings.json.
 
   npx kaboom.claude --help     Show this help.`);
 }
@@ -44,6 +48,12 @@ function main() {
       });
     case 'split':
       return require('./../src/split').run();
+    case 'unhook': {
+      const res = require('./../src/hooks').uninstall();
+      log(res.message);
+      process.exit(res.ok ? 0 : 1);
+      return;
+    }
     case '-h':
     case '--help':
     case 'help':

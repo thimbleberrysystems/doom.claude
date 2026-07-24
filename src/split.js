@@ -41,9 +41,19 @@ function run() {
 
   const claudeOk = have('claude');
   const shell = process.env.SHELL || 'sh';
-  const session = `kaboom-claude-${crypto.randomBytes(3).toString('hex')}`;
-  const gameCmd = `node ${q(GAME)} play`;
-  const claudeCmd = claudeOk ? 'claude' : `echo "claude not found on PATH — start it here"; ${shell}`;
+  const id = crypto.randomBytes(3).toString('hex');
+  const session = `kaboom-claude-${id}`;
+
+  // Install the pause-on-idle hooks so the game plays while Claude is thinking
+  // and pauses when it replies. Both panes carry KABOOM_ID so the hooks (run by
+  // the claude in the left pane) and the game (right pane) share one signal file.
+  const hk = require('./hooks').install();
+  log(hk.message);
+
+  const gameCmd = `KABOOM_ID=${id} node ${q(GAME)} play`;
+  const claudeCmd = claudeOk
+    ? `KABOOM_ID=${id} claude`
+    : `echo "claude not found on PATH — start it here"; KABOOM_ID=${id} ${shell}`;
 
   let r = tmux(['new-session', '-d', '-s', session, '-n', 'doom', shell]);
   if (r.status !== 0) {
@@ -65,7 +75,10 @@ function run() {
   if (!claudeOk) {
     log('Note: `claude` was not found on PATH; start Claude Code in the left pane yourself.');
   }
-  log('Opening Claude ⟷ game split… (Ctrl-b then → to focus the game and play; Q quits)');
+  log('Opening Claude ⟷ game split…');
+  log('  • Ctrl-b then →  focus the game (arrow keys move · F fire · Q quit)');
+  log('  • Ctrl-b then ←  focus Claude');
+  log('  • The game plays while Claude is thinking, and pauses when it replies.');
 
   const inside = !!process.env.TMUX;
   const at = inside

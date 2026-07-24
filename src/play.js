@@ -11,6 +11,9 @@
 // Rendering: cell-level frame diffing — only changed cells are repainted, with
 // cursor jumps over unchanged runs — so it stays smooth even over SSH.
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { DoomEngine } = require('./doom-engine');
 const { DoomKeys: K, mapKeyToDoom } = require('./doom-keys');
 
@@ -22,6 +25,16 @@ const HOLD_MS = 220;
 
 let engine = null;
 let kittyEnabled = false;
+
+// Coupling to Claude's activity — active only under `split`, where KABOOM_ID is
+// injected into both panes. The game plays while Claude is thinking ("busy")
+// and pauses when it replies ("idle"). Standalone play (no KABOOM_ID) never pauses.
+const KID = process.env.KABOOM_ID || null;
+const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`) : null;
+let paused = !!KID;        // coupled → start paused (Claude is idle at launch)
+let bannerDirty = !!KID;
+let actMtime = -1;
+let actState = 'idle';
 
 // ---- terminal setup / guaranteed teardown ----------------------------------
 let tornDown = false;
@@ -173,6 +186,33 @@ function handleKitty(s, eng) {
   }
 }
 
+// ---- pause coupling --------------------------------------------------------
+function pollActivity() {
+  let m = 0;
+  try { m = fs.statSync(ACT).mtimeMs; } catch (_) {}
+  if (m !== actMtime) {
+    try { const s = fs.readFileSync(ACT, 'utf8').trim(); if (s === 'busy' || s === 'idle') actState = s; } catch (_) {}
+    actMtime = m;
+  }
+  const shouldPause = actState !== 'busy';
+  if (shouldPause !== paused) {
+    paused = shouldPause;
+    if (paused) bannerDirty = true;
+    else prev = null; // resumed → force a full redraw
+  }
+}
+function drawPausedBanner() {
+  const cols = out.columns || 80, rows = out.rows || 24;
+  const msg = ['⏸  PAUSED', '', 'Claude is ready — read the reply,', 'then send your next prompt.', '', 'kaboom plays while Claude is thinking.', '', 'Q to quit'];
+  let s = '\x1b[2J';
+  const top = Math.max(1, Math.floor((rows - msg.length) / 2));
+  for (let i = 0; i < msg.length; i++) {
+    const col = Math.max(1, Math.floor((cols - msg[i].length) / 2) + 1);
+    s += `\x1b[${top + i};${col}H\x1b[97m${msg[i]}\x1b[0m`;
+  }
+  out.write(s);
+}
+
 // Ask the terminal whether it supports the Kitty keyboard protocol.
 function detectKitty() {
   return new Promise((resolve) => {
@@ -200,7 +240,7 @@ async function start() {
     process.exit(1);
   }
 
-  out.write('\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H\x1b[97mLoading DOOM…\x1b[0m');
+  out.write('\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H\x1b[97mLoading…\x1b[0m');
 
   const kitty = await detectKitty();
 
@@ -222,7 +262,12 @@ async function start() {
   });
 
   const delay = Math.round(1000 / FPS);
-  const loop = () => { engine.tick(); renderFrame(engine); setTimeout(loop, delay); };
+  const loop = () => {
+    if (KID) pollActivity();
+    if (!paused) { engine.tick(); renderFrame(engine); }
+    else if (bannerDirty) { drawPausedBanner(); bannerDirty = false; }
+    setTimeout(loop, delay);
+  };
   loop();
 }
 
