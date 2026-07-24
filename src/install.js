@@ -1,67 +1,62 @@
 'use strict';
 
-// snake.claude — installer. Wires the status-line arcade into Claude Code by
+// doom.claude — installer. Wires the DOOM status-line HUD into Claude Code by
 // editing ~/.claude/settings.json:
-//   - statusLine  → our runtime (node ~/.claude/snake/statusline.js) + refreshInterval:1
-//   - hooks       → UserPromptSubmit/Stop/SubagentStart/SubagentStop write the
-//                   busy/idle + timer + agent-count files the HUD reads
-// and copies statusline.js to a stable path so the config never points into the
+//   - statusLine  → our runtime (node ~/.claude/doom/statusline.js) + refreshInterval:1
+//   - hooks       → UserPromptSubmit/Stop/SubagentStart/SubagentStop feed the HUD
+//                   (busy/idle, turn start+end times, agent count)
+// and copies the runtime to a stable path so the config never points into the
 // transient npx cache.
 //
-// Rules (same discipline as the rest of the project):
-//   - never write if settings.json is present-but-unparseable
-//   - back up before the first write
-//   - merge, don't clobber unrelated keys/hooks
-//   - idempotent; uninstall removes only what we added (marker-based)
+// Rules: never write if settings.json is unparseable; back up before writing;
+// merge (don't clobber); idempotent (replaces our own prior entries); uninstall
+// removes only what we added (marker-based).
 
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
 
 const HOME = os.homedir();
-const SNAKE_DIR = path.join(HOME, '.claude', 'snake');
-const DEST_STATUSLINE = path.join(SNAKE_DIR, 'statusline.js');
-const PREV_STATUSLINE = path.join(SNAKE_DIR, 'prev-statusline.json');
+const DOOM_DIR = path.join(HOME, '.claude', 'doom');
+const PREV_STATUSLINE = path.join(DOOM_DIR, 'prev-statusline.json');
 
 const SETTINGS_FILE = path.join(HOME, '.claude', 'settings.json');
-const BACKUP_FILE = path.join(HOME, '.claude', 'settings.json.snake-bak');
+const BACKUP_FILE = path.join(HOME, '.claude', 'settings.json.doom-bak');
 
-const MARKER = '# snake.claude';
+const MARKER = '# doom.claude';
 
-// Both runtimes live in this package's src/ and get copied to SNAKE_DIR.
+// Runtimes shipped in this package's src/, copied to DOOM_DIR at install.
 const RUNTIMES = { statusline: 'statusline.js', probe: 'probe.js' };
 
-// Is a statusLine command one of ours? (points at a script we installed)
 function isOursCommand(cmd) {
   return (
     typeof cmd === 'string' &&
-    (cmd.includes('snake/statusline.js') || cmd.includes('snake/probe.js'))
+    (cmd.includes('doom/statusline.js') || cmd.includes('doom/probe.js'))
   );
 }
-
-// Hook commands — fast shell one-liners, each guaranteed to exit 0, each tagged
-// with the marker so install is idempotent and uninstall is surgical. State is
-// keyed by session_id (parsed from the hook's own stdin JSON with sed) so
-// concurrent Claude sessions never clobber each other's HUD.
-const SID = `sid=$(sed -n 's/.*"session_id":"\\([^"]*\\)".*/\\1/p'); [ -z "$sid" ] && sid=default`;
-const HOOKS = {
-  UserPromptSubmit:
-    `d="$HOME/.claude/snake"; mkdir -p "$d"; ${SID}; ` +
-    `printf busy > "$d/activity.$sid"; date +%s > "$d/start.$sid"; printf 0 > "$d/agents.$sid"; true  ${MARKER}`,
-  Stop:
-    `d="$HOME/.claude/snake"; ${SID}; ` +
-    `printf idle > "$d/activity.$sid"; printf 0 > "$d/agents.$sid"; true  ${MARKER}`,
-  SubagentStart:
-    `d="$HOME/.claude/snake"; mkdir -p "$d"; ${SID}; ` +
-    `c=$(cat "$d/agents.$sid" 2>/dev/null || echo 0); printf %s "$((c+1))" > "$d/agents.$sid"; true  ${MARKER}`,
-  SubagentStop:
-    `d="$HOME/.claude/snake"; ${SID}; ` +
-    `c=$(cat "$d/agents.$sid" 2>/dev/null || echo 0); n=$((c-1)); [ "$n" -lt 0 ] && n=0; printf %s "$n" > "$d/agents.$sid"; true  ${MARKER}`,
-};
 
 function shellQuote(s) {
   return `"${String(s).replace(/(["\\$`])/g, '\\$1')}"`;
 }
+
+// Hook commands — fast shell one-liners, guaranteed to exit 0, marker-tagged.
+// State is keyed by session_id (parsed from the hook's own stdin JSON) so
+// concurrent Claude sessions never clobber each other.
+const SID = `sid=$(sed -n 's/.*"session_id":"\\([^"]*\\)".*/\\1/p'); [ -z "$sid" ] && sid=default`;
+const HOOKS = {
+  UserPromptSubmit:
+    `d="$HOME/.claude/doom"; mkdir -p "$d"; ${SID}; ` +
+    `printf busy > "$d/activity.$sid"; date +%s > "$d/start.$sid"; printf 0 > "$d/agents.$sid"; true  ${MARKER}`,
+  Stop:
+    `d="$HOME/.claude/doom"; mkdir -p "$d"; ${SID}; ` +
+    `printf idle > "$d/activity.$sid"; date +%s > "$d/end.$sid"; printf 0 > "$d/agents.$sid"; true  ${MARKER}`,
+  SubagentStart:
+    `d="$HOME/.claude/doom"; mkdir -p "$d"; ${SID}; ` +
+    `c=$(cat "$d/agents.$sid" 2>/dev/null || echo 0); printf %s "$((c+1))" > "$d/agents.$sid"; true  ${MARKER}`,
+  SubagentStop:
+    `d="$HOME/.claude/doom"; ${SID}; ` +
+    `c=$(cat "$d/agents.$sid" 2>/dev/null || echo 0); n=$((c-1)); [ "$n" -lt 0 ] && n=0; printf %s "$n" > "$d/agents.$sid"; true  ${MARKER}`,
+};
 
 // ---- settings.json read/write ---------------------------------------------
 function readSettings() {
@@ -83,14 +78,12 @@ function readSettings() {
     return { ok: false, error: err };
   }
 }
-
 function backupOnce(exists) {
   if (!exists) return;
   try {
     fs.copyFileSync(SETTINGS_FILE, BACKUP_FILE);
   } catch (_) {}
 }
-
 function writeSettings(data) {
   try {
     fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true });
@@ -98,18 +91,7 @@ function writeSettings(data) {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2) + '\n');
 }
 
-// ---- hook helpers (marker-based, idempotent) ------------------------------
-function eventHasMarker(arr) {
-  return (
-    Array.isArray(arr) &&
-    arr.some(
-      (g) =>
-        g &&
-        Array.isArray(g.hooks) &&
-        g.hooks.some((h) => h && typeof h.command === 'string' && h.command.includes(MARKER))
-    )
-  );
-}
+// ---- hook helpers (marker-based) ------------------------------------------
 function stripMarker(arr) {
   if (!Array.isArray(arr)) return arr;
   return arr
@@ -121,10 +103,9 @@ function stripMarker(arr) {
 }
 
 // ---- install ---------------------------------------------------------------
-// mode: 'statusline' (the game, default) or 'probe' (the diagnostic view).
 function install(mode) {
   const runtime = RUNTIMES[mode] || RUNTIMES.statusline;
-  const destFile = path.join(SNAKE_DIR, runtime);
+  const destFile = path.join(DOOM_DIR, runtime);
 
   const res = readSettings();
   if (!res.ok) {
@@ -137,12 +118,10 @@ function install(mode) {
   }
   const data = res.data;
 
-  // Copy both runtimes to their stable home (so switching modes is instant),
-  // and point the config at the chosen one.
   try {
-    fs.mkdirSync(SNAKE_DIR, { recursive: true });
+    fs.mkdirSync(DOOM_DIR, { recursive: true });
     for (const f of Object.values(RUNTIMES)) {
-      fs.copyFileSync(path.join(__dirname, f), path.join(SNAKE_DIR, f));
+      fs.copyFileSync(path.join(__dirname, f), path.join(DOOM_DIR, f));
     }
   } catch (err) {
     return { ok: false, message: `Could not install runtime: ${err.message}` };
@@ -150,7 +129,6 @@ function install(mode) {
 
   backupOnce(!res.missing);
 
-  // statusLine — stash any pre-existing one that isn't ours, then set ours.
   const existing = data.statusLine;
   const existingIsOurs = existing && isOursCommand(existing.command);
   if (existing && !existingIsOurs) {
@@ -158,23 +136,15 @@ function install(mode) {
       fs.writeFileSync(PREV_STATUSLINE, JSON.stringify(existing, null, 2));
     } catch (_) {}
   }
-  data.statusLine = {
-    type: 'command',
-    command: `node ${shellQuote(destFile)}`,
-    refreshInterval: 1,
-    padding: 0,
-  };
+  data.statusLine = { type: 'command', command: `node ${shellQuote(destFile)}`, refreshInterval: 1, padding: 0 };
 
-  // hooks — install our current entries. Strip any prior `# snake.claude`
-  // entries first (self-heals across versions — e.g. old tmux play/pause hooks)
-  // then add the fresh command. Idempotent, and preserves unrelated hooks.
+  // hooks — replace any prior marked entries (self-heals across versions), keep others.
   if (!data.hooks || typeof data.hooks !== 'object' || Array.isArray(data.hooks)) data.hooks = {};
   for (const [event, command] of Object.entries(HOOKS)) {
     const arr = Array.isArray(data.hooks[event]) ? stripMarker(data.hooks[event]) : [];
     arr.push({ hooks: [{ type: 'command', command }] });
     data.hooks[event] = arr;
   }
-  // Also strip our stale hooks from events we no longer use.
   for (const event of Object.keys(data.hooks)) {
     if (HOOKS[event]) continue;
     if (!Array.isArray(data.hooks[event])) continue;
@@ -189,11 +159,11 @@ function install(mode) {
     return { ok: false, message: `Failed to write settings: ${err.message}` };
   }
 
-  const what = mode === 'probe' ? 'diagnostic probe' : 'Pong + HUD status line';
+  const what = mode === 'probe' ? 'diagnostic probe' : 'DOOM HUD status line';
   return {
     ok: true,
     message:
-      `Installed the snake.claude ${what} into ${SETTINGS_FILE}\n` +
+      `Installed the doom.claude ${what} into ${SETTINGS_FILE}\n` +
       `(backup: ${BACKUP_FILE}).` +
       (existing && !existingIsOurs ? `\nYour previous statusLine was saved to ${PREV_STATUSLINE}.` : ''),
   };
@@ -209,7 +179,6 @@ function uninstall() {
   const data = res.data;
   let changed = false;
 
-  // statusLine — remove ours; restore a stashed previous one if present.
   if (data.statusLine && isOursCommand(data.statusLine.command)) {
     let prev = null;
     try {
@@ -220,7 +189,6 @@ function uninstall() {
     changed = true;
   }
 
-  // hooks — strip our marked entries only.
   if (data.hooks && typeof data.hooks === 'object') {
     for (const event of Object.keys(HOOKS)) {
       if (!Array.isArray(data.hooks[event])) continue;
@@ -233,7 +201,7 @@ function uninstall() {
     if (Object.keys(data.hooks).length === 0) delete data.hooks;
   }
 
-  if (!changed) return { ok: true, message: 'No snake.claude config found — nothing to remove.' };
+  if (!changed) return { ok: true, message: 'No doom.claude config found — nothing to remove.' };
 
   backupOnce(true);
   try {
@@ -242,24 +210,20 @@ function uninstall() {
     return { ok: false, message: `Failed to write settings: ${err.message}` };
   }
 
-  // Remove the whole runtime + per-session state dir (the settings backup lives
-  // in ~/.claude/, not here, so it survives).
   try {
-    fs.rmSync(SNAKE_DIR, { recursive: true, force: true });
+    fs.rmSync(DOOM_DIR, { recursive: true, force: true });
   } catch (_) {}
 
-  return { ok: true, message: 'Removed the snake.claude status line and hooks from settings.json.' };
+  return { ok: true, message: 'Removed the doom.claude status line and hooks from settings.json.' };
 }
 
 module.exports = {
   SETTINGS_FILE,
   BACKUP_FILE,
-  SNAKE_DIR,
-  DEST_STATUSLINE,
+  DOOM_DIR,
   MARKER,
   HOOKS,
   install,
   uninstall,
-  // for tests
   _readSettings: readSettings,
 };

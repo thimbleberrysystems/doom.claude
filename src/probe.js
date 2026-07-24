@@ -1,14 +1,14 @@
 'use strict';
 
-// snake.claude — diagnostic status line. Installed by `npx snake.claude probe`.
+// doom.claude — diagnostic status line. Installed by `npx doom.claude probe`.
 //
 // It prints 10 numbered rows plus a couple of info rows, so you can:
 //   1. count how many rows your Claude Code status line actually renders
 //      (that's your height cap), and
 //   2. see which fields the status-line JSON actually provides.
 //
-// Swap back to the game with `npx snake.claude install`, or remove everything
-// with `npx snake.claude uninstall`.
+// Swap back to the game with `npx doom.claude install`, or remove everything
+// with `npx doom.claude uninstall`.
 
 const fs = require('fs');
 
@@ -29,7 +29,7 @@ function main() {
 
   const lines = [];
   for (let i = 1; i <= 10; i++) {
-    lines.push(` snake.claude probe — row ${String(i).padStart(2, '0')}  (count the rows you can see)`);
+    lines.push(` doom.claude probe — row ${String(i).padStart(2, '0')}  (count the rows you can see)`);
   }
 
   const keys = Object.keys(ctx).join(', ') || '(none — no JSON received)';
@@ -47,6 +47,6 @@ try {
   main();
 } catch (_) {
   try {
-    process.stdout.write(' snake.claude probe (error)\n');
+    process.stdout.write(' doom.claude probe (error)\n');
   } catch (__) {}
 }

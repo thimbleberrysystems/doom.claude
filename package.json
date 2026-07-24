@@ -1,17 +1,17 @@
 {
-  "name": "snake.claude",
+  "name": "doom.claude",
   "version": "1.0.0",
-  "description": "A Pong + live-telemetry arcade in your Claude Code status line — auto-plays while you work and shows what Claude is doing.",
+  "description": "A DOOM HUD in your Claude Code status line — HEALTH = remaining context, AMMO = tokens, and the DOOMGUY face reacts to what Claude is doing.",
   "author": "thimbleberrysystems <thimbleberrysystems@gmail.com>",
   "bin": {
-    "snake.claude": "bin/snake.claude.js"
+    "doom.claude": "bin/doom.claude.js"
   },
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thimbleberrysystems/snake.claude.git"
+    "url": "git+https://github.com/thimbleberrysystems/doom.claude.git"
   },
-  "homepage": "https://github.com/thimbleberrysystems/snake.claude#readme",
+  "homepage": "https://github.com/thimbleberrysystems/doom.claude#readme",
   "files": [
     "bin/",
     "src/",
@@ -29,9 +29,9 @@
     "claude-code",
     "statusline",
     "status-line",
-    "pong",
+    "doom",
+    "hud",
     "game",
-    "arcade",
     "cli",
     "terminal"
   ],

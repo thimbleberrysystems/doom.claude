@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="430" viewBox="0 0 880 430" font-family="'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace">
+  <style>
+    text { font-size: 15px; }
+    .b { font-weight: 700; }
+  </style>
+
+  <!-- window -->
+  <rect x="2" y="2" width="876" height="426" rx="10" fill="#0b0b0b" stroke="#2a2a2a" stroke-width="1.5"/>
+
+  <!-- title bar -->
+  <circle cx="26" cy="24" r="6" fill="#f38ba8"/>
+  <circle cx="46" cy="24" r="6" fill="#f9e2af"/>
+  <circle cx="66" cy="24" r="6" fill="#a6e3a1"/>
+  <text x="440" y="29" text-anchor="middle" fill="#6c7086">Claude Code</text>
+  <line x1="12" y1="46" x2="868" y2="46" stroke="#2a2a2a" stroke-width="1"/>
+
+  <!-- conversation -->
+  <g xml:space="preserve">
+    <text x="26" y="86"  fill="#cba6f7" class="b">✳ Claude Code</text>
+    <text x="26" y="126" fill="#6c7086">&gt; <tspan fill="#cdd6f4">port the renderer to WebGPU</tspan></text>
+    <text x="26" y="166" fill="#fab387" class="b">● Working…<tspan fill="#6c7086" class="b">  (esc to interrupt)</tspan></text>
+    <text x="26" y="196" fill="#6c7086">  · Editing  src/gpu/pipeline.ts</text>
+    <text x="26" y="224" fill="#6c7086">  · Running  the shader tests</text>
+  </g>
+
+  <!-- DOOM status band -->
+  <rect x="12" y="300" width="856" height="70" rx="6" fill="#141414" stroke="#3a1010" stroke-width="1.2"/>
+  <g xml:space="preserve">
+    <!-- scene row -->
+    <text x="24" y="326"><tspan fill="#e05a4f" class="b">E1M1</tspan><tspan fill="#6c7086"> Opus 4.8   </tspan><tspan fill="#9aa0a6">▐▛▏</tspan><tspan fill="#f9e2af" class="b">▸ </tspan><tspan fill="#b07a3a">m       m          m   </tspan><tspan fill="#f9e2af" class="b">✱ B L A M ✱</tspan><tspan fill="#e05a4f"> †</tspan></text>
+    <!-- DOOM status bar -->
+    <text x="24" y="354"><tspan fill="#6c7086">AMMO </tspan><tspan fill="#f9e2af" class="b">128k</tspan><tspan fill="#3a3a3a">  ║  </tspan><tspan fill="#6c7086">HEALTH </tspan><tspan fill="#5bd66b">▓▓▓▓▓▓▓</tspan><tspan fill="#3a2020">░░░</tspan><tspan fill="#e05a4f" class="b"> 66%</tspan><tspan fill="#3a3a3a">  ║  </tspan><tspan fill="#ffffff" class="b">( &gt;_&lt; )</tspan><tspan fill="#3a3a3a">  ║  </tspan><tspan fill="#6c7086">ARMOR </tspan><tspan fill="#6aa9ff">43%</tspan><tspan fill="#3a3a3a">  ║  </tspan><tspan fill="#6c7086">TIME </tspan><tspan fill="#ffffff">12s</tspan><tspan fill="#3a3a3a">  ║  </tspan><tspan fill="#ffffff" class="b">27</tspan><tspan fill="#6c7086"> kills</tspan></text>
+  </g>
+
+  <text x="24" y="398" xml:space="preserve" fill="#585b70">↑ your status line, DOOM-style — HEALTH = remaining context, AMMO = tokens, the face reacts.</text>
+</svg>
