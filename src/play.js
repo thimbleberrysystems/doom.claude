@@ -35,6 +35,8 @@ let paused = !!KID;        // coupled → start paused (Claude is idle at launch
 let bannerDirty = !!KID;
 let actMtime = -1;
 let actState = 'idle';
+let override = null;       // 'play' | 'pause' | null — manual override (P key);
+                          // cleared on the next real Claude activity change.
 
 // ---- terminal setup / guaranteed teardown ----------------------------------
 let tornDown = false;
@@ -176,6 +178,7 @@ function handleKitty(s, eng) {
     if (fin === 'u') {
       if (cp === 113 || cp === 81) { teardown(); process.exit(0); }   // q / Q
       if (cp === 99 && ctrl) { teardown(); process.exit(0); }         // Ctrl+C
+      if (KID && cp === 112) { if (ev !== 3) togglePlay(); continue; } // p — manual play/pause
       keys = cpToDoom(cp, shift);
     } else if (fin === 'A') keys = shift ? [K.UP, K.RSHIFT] : [K.UP];
     else if (fin === 'B') keys = shift ? [K.DOWN, K.RSHIFT] : [K.DOWN];
@@ -187,23 +190,45 @@ function handleKitty(s, eng) {
 }
 
 // ---- pause coupling --------------------------------------------------------
-function pollActivity() {
-  let m = 0;
-  try { m = fs.statSync(ACT).mtimeMs; } catch (_) {}
-  if (m !== actMtime) {
-    try { const s = fs.readFileSync(ACT, 'utf8').trim(); if (s === 'busy' || s === 'idle') actState = s; } catch (_) {}
-    actMtime = m;
-  }
-  const shouldPause = actState !== 'busy';
-  if (shouldPause !== paused) {
-    paused = shouldPause;
+// Effective pause = manual override if set, else follow Claude (idle = paused).
+function computePaused() {
+  const eff = override === 'play' ? false : override === 'pause' ? true : actState !== 'busy';
+  if (eff !== paused) {
+    paused = eff;
     if (paused) bannerDirty = true;
     else prev = null; // resumed → force a full redraw
   }
 }
+function pollActivity() {
+  let m = 0;
+  try { m = fs.statSync(ACT).mtimeMs; } catch (_) {}
+  if (m !== actMtime) {
+    let s = '';
+    try { s = fs.readFileSync(ACT, 'utf8').trim(); } catch (_) {}
+    if ((s === 'busy' || s === 'idle') && s !== actState) {
+      actState = s;
+      override = null; // a real Claude transition returns control to auto mode
+    }
+    actMtime = m;
+  }
+  computePaused();
+}
+// P key: play now even when Claude is idle (or pause manually while it thinks).
+function togglePlay() {
+  override = paused ? 'play' : 'pause';
+  computePaused();
+}
 function drawPausedBanner() {
   const cols = out.columns || 80, rows = out.rows || 24;
-  const msg = ['⏸  PAUSED', '', 'Claude is ready — read the reply,', 'then send your next prompt.', '', 'kaboom plays while Claude is thinking.', '', 'Q to quit'];
+  const msg = [
+    '⏸  PAUSED — Claude is ready',
+    '',
+    '  P          play now',
+    '  Ctrl-b ←   back to Claude',
+    '  Q          quit',
+    '',
+    'The game auto-plays while Claude is thinking.',
+  ];
   let s = '\x1b[2J';
   const top = Math.max(1, Math.floor((rows - msg.length) / 2));
   for (let i = 0; i < msg.length; i++) {
@@ -258,6 +283,7 @@ async function start() {
     const s = b.toString('binary');
     if (kittyEnabled) return handleKitty(s, engine);
     if (s === '\x03' || s === 'q' || s === 'Q') { teardown(); process.exit(0); }
+    if (KID && (s === 'p' || s === 'P')) { togglePlay(); return; } // manual play/pause
     for (const key of mapKeyToDoom(s)) press(key);
   });
 

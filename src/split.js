@@ -67,10 +67,14 @@ function run() {
     process.exit(1);
   }
 
-  // Right pane (0.1) = Doom; left pane (0.0) = Claude. Focus Claude to start.
+  // Right pane (0.1) = the game; left pane (0.0) = Claude. Focus Claude to start.
   tmux(['send-keys', '-t', `${session}:0.1`, gameCmd, 'Enter']);
   tmux(['send-keys', '-t', `${session}:0.0`, claudeCmd, 'Enter']);
   tmux(['select-pane', '-t', `${session}:0.0`]);
+
+  // Persistent controls hint in the tmux status bar (always visible).
+  tmux(['set-option', '-t', session, 'status-right', ' Ctrl-b ←/→ switch panes · game: P play/pause · Q quit ']);
+  tmux(['set-option', '-t', session, 'status-right-length', '70']);
 
   if (!claudeOk) {
     log('Note: `claude` was not found on PATH; start Claude Code in the left pane yourself.');

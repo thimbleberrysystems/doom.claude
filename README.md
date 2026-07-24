@@ -28,14 +28,19 @@ Want the game running while you use Claude Code? A full-screen game can't share 
 npx kaboom.claude split
 ```
 
-Focus the game pane (`Ctrl-b` then `→`) to play while you wait on a response; focus Claude to type. (Requires `tmux`; Linux/macOS/WSL.)
-
 ```
 ┌─ Claude ─────┐┌─ kaboom ─────┐
 │ > working…   ││  ▓█ enemy!    │
 │              ││  HEALTH 80    │
 └──────────────┘└──────────────┘
 ```
+
+- **Switch panes:** `Ctrl-b` then `→` (game) / `←` (Claude). `Ctrl-b` `z` zooms a pane fullscreen.
+- **Auto play/pause:** the game **plays while Claude is thinking** and **pauses when it replies** (with a banner showing the controls).
+- **Play anytime:** press **`P`** in the game to play or pause manually — so you can keep playing even while Claude is idle.
+- The switch keys stay visible in the tmux status bar. To remove the pause hooks later: `npx kaboom.claude unhook`.
+
+(Requires `tmux`; Linux/macOS/WSL.)
 
 ## How it works
 

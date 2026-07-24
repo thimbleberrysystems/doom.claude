@@ -23,7 +23,8 @@ function help() {
 
   npx kaboom.claude split      The game and Claude side by side in a tmux split —
                              Claude left, the game right. The game plays while
-                             Claude is thinking and pauses when it replies.
+                             Claude is thinking and pauses when it replies; press
+                             P in the game to play/pause manually anytime.
                              Switch panes: Ctrl-b then an arrow key. (Needs tmux.)
 
   npx kaboom.claude unhook     Remove the pause-on-idle hooks that 'split' added
