@@ -1,17 +1,17 @@
 {
-  "name": "doom.claude",
+  "name": "kaboom.claude",
   "version": "1.0.0",
   "description": "Real DOOM in your terminal — the actual doomgeneric engine (WASM) with truecolor half-block rendering. Play full-screen, or side by side with Claude Code in a tmux split.",
   "author": "thimbleberrysystems <thimbleberrysystems@gmail.com>",
   "bin": {
-    "doom.claude": "bin/doom.claude.js"
+    "kaboom.claude": "bin/kaboom.claude.js"
   },
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thimbleberrysystems/doom.claude.git"
+    "url": "git+https://github.com/thimbleberrysystems/kaboom.claude.git"
   },
-  "homepage": "https://github.com/thimbleberrysystems/doom.claude#readme",
+  "homepage": "https://github.com/thimbleberrysystems/kaboom.claude#readme",
   "files": [
     "bin/",
     "src/",

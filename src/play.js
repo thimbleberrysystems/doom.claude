@@ -38,7 +38,7 @@ process.on('SIGINT', () => { teardown(); process.exit(0); });
 process.on('SIGTERM', () => { teardown(); process.exit(0); });
 process.on('uncaughtException', (err) => {
   teardown();
-  process.stderr.write(`\ndoom.claude crashed: ${err && err.stack ? err.stack : err}\n`);
+  process.stderr.write(`\nkaboom.claude crashed: ${err && err.stack ? err.stack : err}\n`);
   process.exit(1);
 });
 
@@ -194,7 +194,7 @@ function detectKitty() {
 async function start() {
   if (!inp.isTTY || !out.isTTY) {
     process.stderr.write(
-      'doom.claude: needs a real, interactive terminal.\n' +
+      'kaboom.claude: needs a real, interactive terminal.\n' +
       'Run it from a normal shell (not via Claude\'s `!`, a pipe, or a non-interactive shell).\n'
     );
     process.exit(1);

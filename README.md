@@ -1,9 +1,9 @@
-# doom.claude 😈
+# kaboom.claude 😈
 
-**A real Doom, in your terminal, in one command.** No install, no WAD hunting, no compiler — `npx doom.claude` runs the actual Doom engine (doomgeneric, compiled to WebAssembly) full-screen with truecolor half-block rendering. It ships **Freedoom** — a free, BSD-licensed, Doom-compatible game — so there's nothing to download and no proprietary assets.
+**A real Doom, in your terminal, in one command.** No install, no WAD hunting, no compiler — `npx kaboom.claude` runs the actual Doom engine (doomgeneric, compiled to WebAssembly) full-screen with truecolor half-block rendering. It ships **Freedoom** — a free, BSD-licensed, Doom-compatible game — so there's nothing to download and no proprietary assets.
 
 <p align="center">
-  <img src="docs/freedoom-title.png" alt="Freedoom running in the terminal via doom.claude" width="600">
+  <img src="docs/freedoom-title.png" alt="Freedoom running in the terminal via kaboom.claude" width="600">
   <br>
   <em>Actual output from the bundled engine (Freedoom Phase 1) — rendered in your terminal as truecolor half-blocks.</em>
 </p>
@@ -13,7 +13,7 @@
 From a normal terminal (needs a real TTY — not Claude's `!`):
 
 ```sh
-npx doom.claude
+npx kaboom.claude
 ```
 
 **Controls:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use/open · `1`–`7` weapons · `Tab` map · `Esc` menu · `Q` quit.
@@ -25,7 +25,7 @@ npx doom.claude
 Want Doom running while you use Claude Code? A full-screen game can't share one terminal with Claude, so this opens a **tmux split** — Claude on the left, real Doom on the right:
 
 ```sh
-npx doom.claude split
+npx kaboom.claude split
 ```
 
 Focus the Doom pane (`Ctrl-b` then `→`) to play while you wait on a response; focus Claude to type. (Requires `tmux`; Linux/macOS/WSL.)
