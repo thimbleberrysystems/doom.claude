@@ -51,6 +51,22 @@ function installInstructions() {
 }
 
 function launch() {
+  // We must be able to take over an interactive terminal to attach the split.
+  // Running inside Claude Code via `!`, over a pipe, or in any non-interactive
+  // shell has no TTY — bail early with guidance instead of a cryptic tmux error
+  // (and without creating an orphaned detached session).
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    log('snake.claude needs a real, interactive terminal to open the split.');
+    log('');
+    log('This was run without one — most likely from inside Claude Code (the `!`');
+    log('prefix), or a non-interactive shell. Open a normal terminal window');
+    log('(a fresh bash / zsh / WSL shell) and run it there:');
+    log('');
+    log('    npx snake.claude');
+    log('');
+    process.exit(1);
+  }
+
   const pre = tmux.preflight();
 
   if (!pre.tmux) {
