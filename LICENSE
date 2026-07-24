@@ -4,38 +4,72 @@ Copyright (c) 2026 Thimble Berry Systems
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
 Foundation; either version 2 of the License, or (at your option) any later
-version.
+version (SPDX: GPL-2.0-or-later).
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-The full text of the GNU General Public License version 2 is available at:
-https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+>> A complete copy of the GNU General Public License, version 2, is included in
+   the file COPYING in this distribution.
 
---------------------------------------------------------------------------------
-Bundled third-party components
---------------------------------------------------------------------------------
+================================================================================
+Copyright holders of the bundled GPL components
+================================================================================
 
-- DOOM engine: doomgeneric (https://github.com/ozkl/doomgeneric), a portable
-  port of id Software's DOOM (https://github.com/id-Software/DOOM), compiled to
-  WebAssembly. GPL-2.0.
+- id Software, Inc. — DOOM engine source, © 1993-1996.
+- Simon Howard and the Chocolate Doom contributors — © 2005-2014.
+- ozkl and contributors — doomgeneric (https://github.com/ozkl/doomgeneric),
+  the portable Doom engine port.
+- Mario Zechner — pi-doom (https://github.com/badlogic/pi-doom), the Node/WASM
+  build and the original TypeScript engine wrapper.
 
-- The WebAssembly build (engine/doom.js, engine/doom.wasm) and the CommonJS
-  engine wrapper are derived from pi-doom (https://github.com/badlogic/pi-doom),
-  GPL-2.0.
+================================================================================
+Corresponding source (GNU GPL v2, section 3)
+================================================================================
 
-- Game data: engine/freedoom1.wad is Freedoom Phase 1
-  (https://freedoom.github.io/), a free, BSD-3-Clause-licensed Doom-compatible
-  IWAD that contains NO id Software assets. © 2001-2024 Contributors to the
-  Freedoom project; all rights reserved. Its license text and contributor
-  credits are bundled at engine/FREEDOOM-COPYING.txt and
-  engine/FREEDOOM-CREDITS.txt, and are reproduced here as required by the
-  BSD-3-Clause license.
+This package distributes the Doom engine in compiled (WebAssembly) form as
+engine/doom.js and engine/doom.wasm. Those two files are an UNMODIFIED copy of
+the Emscripten build produced by pi-doom, which compiles doomgeneric. The
+complete corresponding source code for that engine is publicly available at:
+
+  - doomgeneric:  https://github.com/ozkl/doomgeneric
+  - pi-doom (build + WAD packaging):  https://github.com/badlogic/pi-doom
+
+The maintainers of kaboom.claude will also, on request, provide the complete
+corresponding source for the bundled engine build, per GPL-2.0 section 3.
+
+================================================================================
+Modifications (GNU GPL v2, section 2a)
+================================================================================
+
+- src/doom-engine.js is a derivative of pi-doom's src/doom-engine.ts, ported to
+  CommonJS by the kaboom.claude authors in 2026.
+- src/doom-keys.js reimplements pi-doom's key mapping without external
+  dependencies (rewritten by the kaboom.claude authors in 2026).
+- src/play.js, src/split.js, and bin/kaboom.claude.js are original works of the
+  kaboom.claude authors, licensed GPL-2.0-or-later.
+- engine/doom.js and engine/doom.wasm are unmodified from pi-doom.
+
+================================================================================
+Game data — Freedoom (BSD-3-Clause)
+================================================================================
+
+engine/freedoom1.wad is Freedoom Phase 1 (https://freedoom.github.io/), a free,
+BSD-3-Clause-licensed, Doom-compatible IWAD that contains NO id Software assets.
+© 2001-2024 Contributors to the Freedoom project; all rights reserved. Its full
+license text and contributor credits are bundled, unmodified, as
+engine/FREEDOOM-COPYING.txt and engine/FREEDOOM-CREDITS.txt, and are reproduced
+as required by the BSD-3-Clause license.
+
+================================================================================
+Trademarks
+================================================================================
 
 This project ships NO id Software game assets. DOOM is a trademark of id
-Software LLC; Claude and Claude Code are trademarks of Anthropic PBC. This is an
-independent, unofficial tool, not affiliated with, endorsed by, or sponsored by
-id Software, ZeniMax, the Freedoom project, or Anthropic. It bundles and
-redistributes no Anthropic software — the `split` command only launches the
-user's own separately-installed Claude Code alongside the game.
+Software LLC; Claude and Claude Code are trademarks of Anthropic PBC; Freedoom
+is a project of the Freedoom contributors. This is an independent, unofficial
+tool, not affiliated with, endorsed by, or sponsored by id Software, ZeniMax,
+the Freedoom project, or Anthropic. It bundles and redistributes no Anthropic
+software — the `split` command only launches the user's own separately-installed
+Claude Code alongside the game.
