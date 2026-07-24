@@ -192,13 +192,11 @@ function step() {
 
   game.dir = game.nextDir;
   const head = game.snake[game.snake.length - 1];
-  const nx = head.x + game.dir.x;
-  const ny = head.y + game.dir.y;
+  // Walls wrap: leaving one edge re-enters from the opposite side. The
+  // modulo keeps coordinates in range even for negative moves.
+  const nx = (head.x + game.dir.x + game.cols) % game.cols;
+  const ny = (head.y + game.dir.y + game.rows) % game.rows;
 
-  // Wall collision.
-  if (nx < 0 || ny < 0 || nx >= game.cols || ny >= game.rows) {
-    return gameOver();
-  }
   // Self collision (the tail cell is about to move away unless we just ate).
   const willEat = nx === game.food.x && ny === game.food.y;
   const body = willEat ? game.snake : game.snake.slice(1);
