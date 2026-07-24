@@ -24,6 +24,10 @@ function help() {
                              Space use, 1-7 weapons, Tab map, Esc menu, Q quit.
                              Needs a real terminal (not Claude's \`!\`).
 
+  npx doom.claude split      Claude and DOOM side by side in a tmux split —
+                             Claude left, real Doom right. Play Doom while you
+                             wait on Claude. (Requires tmux.)
+
   npx doom.claude hud        Install the DOOM-themed Claude Code status-line
                              HUD (HEALTH = context, AMMO = tokens, reactive
                              DOOMGUY face). Auto-plays in the status bar.
@@ -71,6 +75,8 @@ function main() {
         process.stderr.write(`doom.claude: ${err && err.message ? err.message : err}\n`);
         process.exit(1);
       });
+    case 'split':
+      return require('./../src/split').run();
     case 'hud':
     case 'install':
     case 'on':

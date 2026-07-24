@@ -20,6 +20,23 @@ npx doom.claude
 
 > **Controls feel:** on terminals that support the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) it auto-negotiates real key press/release events, so strafing and running are crisp. On other terminals it falls back to press-only with autorepeat (tap again to keep moving). Rendering uses **frame-diffing** (only changed cells are repainted), so it stays smooth even over SSH.
 
+## Play it *next to* Claude
+
+Want Doom running while you use Claude Code? A full-screen game can't share one terminal with Claude, so this opens a **tmux split** — Claude on the left, real Doom on the right:
+
+```sh
+npx doom.claude split
+```
+
+Focus the Doom pane (`Ctrl-b` then `→`) to play while you wait on a response; focus Claude to type. (Requires `tmux`; Linux/macOS/WSL.)
+
+```
+┌─ Claude ─────┐┌─ DOOM ───────┐
+│ > working…   ││  ▓█ imp!      │
+│              ││  HEALTH 80    │
+└──────────────┘└──────────────┘
+```
+
 ## How it works
 
 - The engine is [**doomgeneric**](https://github.com/ozkl/doomgeneric) compiled to **WebAssembly** — it runs under plain Node, no native modules, no system packages. (The WASM build is vendored from [pi-doom](https://github.com/badlogic/pi-doom).)
