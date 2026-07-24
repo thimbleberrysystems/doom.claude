@@ -110,18 +110,16 @@ function run() {
   tmux(['select-pane', '-t', `${session}:0.1`, '-T', 'GAME ▶']);
   tmux(['select-pane', '-t', `${session}:0.0`]);
 
-  // Clickable buttons in the bottom status bar. Clicks are dispatched back
-  // through this CLI (`click <range>`) so the logic is JS, not tmux quoting.
-  const btn = (name, label, bg) => `#[fg=colour231,bg=${bg}]#[range=user|${name}] ${label} #[norange]#[default] `;
+  // Clickable buttons in the bottom status bar (built in src/bar.js so `split`
+  // and the `click` dispatch stay in sync). Clicks are dispatched back through
+  // this CLI (`click <range>`) so the logic is JS, not tmux quoting.
+  const { statusRight } = require('./bar');
   tmux(['set-option', '-g', 'status-left', ' kaboom.claude   ']);
   tmux(['set-option', '-g', 'status-left-length', '20']);
   // The game pane is on the right, so the controls hint + buttons live in
   // status-right (right-aligned) to sit under the game.
-  tmux(['set-option', '-g', 'status-right',
-    `#[fg=colour246]Space to shoot · E to use#[default]   ` +
-    btn('claude', '◀ Claude', 'colour24') + btn('game', 'Game ▶', 'colour28') +
-    btn('zoom', '⤢ Zoom', 'colour238') + btn('quit', '✕ Close game', 'colour88')]);
-  tmux(['set-option', '-g', 'status-right-length', '120']);
+  tmux(['set-option', '-g', 'status-right', statusRight(false)]);
+  tmux(['set-option', '-g', 'status-right-length', '135']);
   tmux(['set-option', '-g', 'status-style', 'bg=colour235,fg=colour252']);
   tmux(['bind-key', '-n', 'MouseDown1Status', 'run-shell', '-b',
     `node ${q(GAME)} click "#{mouse_status_range}" ${SOCKET} ${gamePane} ${claudePane}`]);
@@ -135,7 +133,7 @@ function run() {
   log('  Click a pane to switch — or the ◀ Claude / Game ▶ buttons in the bottom bar.');
   log('  The game plays only while you\'re in it, and waits when you\'re in Claude.');
   log('  When Claude replies, a "🔔 ready" note shows in the game — switch whenever you like.');
-  log('  Resize the split: drag the divider, or Alt-Shift-←/→. Zoom fullscreen: Alt-z or ⤢ button.');
+  log('  Resize: drag the divider or Alt-Shift-←/→ · ›› minimizes the game (‹‹ brings it back) · ⤢ / Alt-z zooms.');
   log('  In the game: arrows/WASD move · Space fire · E use · Q quit.');
   log('');
 

@@ -61,14 +61,34 @@ function main() {
       // Internal: status-bar button dispatch from `split`.
       // argv: click <range> <socket> <gamePane> <claudePane>
       const [range, socket, gamePane, claudePane] = process.argv.slice(3);
-      // Kept identical to CLOSE_CLAUDE_BAR in src/play.js.
-      const CLOSE_CLAUDE_BAR = ' #[fg=colour231,bg=colour88]#[range=user|quitclaude] ✕ Close Claude — end session #[norange]#[default]';
+      const { statusRight, CLOSE_CLAUDE_BAR } = require('../src/bar');
       const { spawnSync } = require('child_process');
       const tx = (a) => spawnSync('tmux', ['-L', socket, ...a], { stdio: 'ignore' });
+      const tget = (a) => (spawnSync('tmux', ['-L', socket, ...a], { encoding: 'utf8' }).stdout || '').trim();
       if (range === 'claude') tx(['select-pane', '-t', claudePane]);    // switch to Claude
       else if (range === 'game') tx(['select-pane', '-t', gamePane]);   // switch to the game
-      else if (range === 'zoom') tx(['resize-pane', '-Z', '-t', gamePane]);
-      else if (range === 'quit') {                                      // close the game only…
+      else if (range === 'zoom') tx(['resize-pane', '-Z', '-t', gamePane]); // maximise (fullscreen toggle)
+      else if (range === 'minimize') {                                  // ›› shrink the game to a sliver
+        // Leave fullscreen first so the width change is visible.
+        if (tget(['display-message', '-p', '-t', gamePane, '#{window_zoomed_flag}']) === '1') {
+          tx(['resize-pane', '-Z', '-t', gamePane]);
+        }
+        // Remember the current width on the pane itself, so ‹‹ restores it exactly.
+        const w = parseInt(tget(['display-message', '-p', '-t', gamePane, '#{pane_width}']), 10) || 0;
+        if (w > 6) tx(['set-option', '-p', '-t', gamePane, '@kaboom_lastw', String(w)]);
+        tx(['resize-pane', '-t', gamePane, '-x', '6']);                 // sliver — just enough to grab/click back
+        tx(['select-pane', '-t', claudePane]);                         // hand focus to Claude
+        tx(['set-option', '-g', 'status-right', statusRight(true)]);    // button flips ›› → ‹‹
+      } else if (range === 'restore') {                                 // ‹‹ bring the game back to its last size
+        let w = parseInt(tget(['show-options', '-pqv', '-t', gamePane, '@kaboom_lastw']), 10);
+        if (!w || w < 6) {                                              // no memory → sensible default (~62%)
+          const win = parseInt(tget(['display-message', '-p', '-t', gamePane, '#{window_width}']), 10) || 100;
+          w = Math.round(win * 0.62);
+        }
+        tx(['resize-pane', '-t', gamePane, '-x', String(w)]);
+        tx(['select-pane', '-t', gamePane]);                           // back into the game
+        tx(['set-option', '-g', 'status-right', statusRight(false)]);   // button flips ‹‹ → ››
+      } else if (range === 'quit') {                                    // close the game only…
         tx(['set-option', '-g', 'status-right', CLOSE_CLAUDE_BAR]);     // …and flip the button to "✕ Close Claude"
         tx(['kill-pane', '-t', gamePane]);
       } else if (range === 'quitclaude') {                             // …which then ends the whole split

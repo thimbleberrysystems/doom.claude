@@ -35,8 +35,8 @@ const KID = process.env.KABOOM_ID || null;
 const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`) : null;
 const SELF_PANE = process.env.TMUX_PANE || ''; // this game's tmux pane
 // After the game closes, the status bar shows just this — a ✕ that ends the
-// whole split (kept identical in bin/kaboom.claude.js).
-const CLOSE_CLAUDE_BAR = ' #[fg=colour231,bg=colour88]#[range=user|quitclaude] ✕ Close Claude — end session #[norange]#[default]';
+// whole split. Shared with split/click via src/bar.js.
+const { CLOSE_CLAUDE_BAR } = require('./bar');
 let focused = false;       // game pane focused? starts false (split focuses Claude first)
 let paused = !!KID;        // derived: coupled & not focused → frozen
 let frozenDirty = !!KID;
