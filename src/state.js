@@ -32,10 +32,16 @@ function stateFile(id) {
 //     uninstall exact.
 const MARKER = '# snake.claude';
 function hookCommand(token) {
-  // Portable across bash/zsh on Linux/macOS/WSL. Always exits 0.
+  // Runs as a child of the `claude` process. When Claude is inside tmux, both
+  // the hook and the snake pane share the same tmux WINDOW, so we key the state
+  // file by window id ("@N") — no env injection into Claude required, and two
+  // Claude+Snake windows never collide. Outside tmux there is no snake attached,
+  // so the hook does nothing. Always exits 0. Portable bash/zsh (Linux/macOS/WSL).
   return (
-    `if [ -n "$SNAKE_CLAUDE_ID" ]; then mkdir -p "$HOME/.claude/snake" && ` +
-    `printf ${token} > "$HOME/.claude/snake/$SNAKE_CLAUDE_ID.state"; fi  ${MARKER}`
+    `if [ -n "$TMUX" ]; then ` +
+    `__scw=$(tmux display-message -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null); ` +
+    `if [ -n "$__scw" ]; then mkdir -p "$HOME/.claude/snake" && ` +
+    `printf ${token} > "$HOME/.claude/snake/$__scw.state"; fi; fi  ${MARKER}`
   );
 }
 

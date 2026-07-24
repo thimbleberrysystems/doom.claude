@@ -30,12 +30,18 @@ function help() {
   The snake runs while Claude is thinking and pauses (keeping your score)
   when Claude finishes. Requires tmux (Linux / macOS / WSL).
 
+Best experience — run Claude inside tmux, then launch from within Claude:
+    tmux            # start tmux
+    claude          # start Claude Code in it
+    !npx snake.claude   # <- type this inside Claude; snake opens beside it
+
 Usage:
-  snake.claude              Install the play/pause hooks and open the
-  snake.claude install      tmux split (Claude left, Snake right).
+  snake.claude              From inside Claude (in tmux): split the current
+  snake.claude install      window and open Snake beside Claude. From a plain
+                            shell: launch a fresh Claude + Snake split.
   snake.claude uninstall    Remove the hooks from ~/.claude/settings.json.
   snake.claude game         Run only the game (what the launcher puts in
-                            the right pane).
+                            the snake pane).
   snake.claude --help       Show this help.
 
 Controls:  arrows / WASD to steer · q quit · r restart`);
@@ -50,24 +56,19 @@ function installInstructions() {
   );
 }
 
-function launch() {
-  // We must be able to take over an interactive terminal to attach the split.
-  // Running inside Claude Code via `!`, over a pipe, or in any non-interactive
-  // shell has no TTY — bail early with guidance instead of a cryptic tmux error
-  // (and without creating an orphaned detached session).
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    log('snake.claude needs a real, interactive terminal to open the split.');
-    log('');
-    log('This was run without one — most likely from inside Claude Code (the `!`');
-    log('prefix), or a non-interactive shell. Open a normal terminal window');
-    log('(a fresh bash / zsh / WSL shell) and run it there:');
-    log('');
-    log('    npx snake.claude');
-    log('');
-    process.exit(1);
+function installHooks() {
+  // Install the hooks that flip play/pause. Report but don't abort on a soft
+  // failure — the game is still playable, just not auto-controlled.
+  const res = hooks.install();
+  log(res.message);
+  if (!res.ok) {
+    log('Continuing without auto pause/resume. You can fix settings.json and re-run.');
   }
+}
 
+function launch() {
   const pre = tmux.preflight();
+  const self = process.argv[1];
 
   if (!pre.tmux) {
     log('snake.claude needs tmux for the side-by-side split, and it is not installed.');
@@ -75,53 +76,62 @@ function launch() {
     log(installInstructions());
     process.exit(1);
   }
+
+  state.ensureDir();
+  state.pruneStale();
+
+  // FLOW 1 — invoked from inside Claude (Claude is running in a tmux pane, e.g.
+  // via `!npx snake.claude`). Split THIS window; snake lands beside Claude. No
+  // attach, no TTY needed.
+  if (pre.insideTmux) {
+    installHooks();
+    const windowId = tmux.windowIdOf(process.env.TMUX_PANE);
+    if (windowId) state.write(windowId, state.PAUSE); // start paused until first prompt
+    const r = tmux.splitCurrent({ self, targetPane: process.env.TMUX_PANE });
+    if (!r.ok) {
+      log(`Could not open the snake pane: ${r.message}`);
+      process.exit(1);
+    }
+    log('');
+    log('🐍 Snake is now in the pane beside Claude.');
+    log('   Submit a prompt to start playing; it pauses when Claude finishes.');
+    log('   Focus the snake pane (Ctrl-b then →) to steer with the arrow keys.');
+    return;
+  }
+
+  // FLOW 2 — invoked from a plain shell (not inside tmux). We need our own
+  // interactive terminal to host a fresh Claude + Snake session.
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    // Almost certainly run via `!` while Claude is NOT inside tmux. Explain the
+    // one-time setup that unlocks the in-session `!` flow.
+    log('To play snake next to your CURRENT Claude session, Claude must be');
+    log('running inside tmux. One-time setup:');
+    log('');
+    log('  1) exit Claude');
+    log('  2) start tmux:     tmux');
+    log('  3) start Claude:   claude');
+    log('  4) inside Claude:  !npx snake.claude');
+    log('');
+    log('Or, from a normal terminal, run `npx snake.claude` to launch a fresh');
+    log('Claude + Snake split for you.');
+    process.exit(1);
+  }
+
   if (!pre.claude) {
-    // Not fatal — the left pane will still open a shell where the user can start
-    // Claude manually — but warn so it is not a surprise.
     log('Warning: `claude` was not found on PATH; the left pane will open a shell.');
     log('         Start Claude Code there, or install it, then re-run.');
     log('');
   }
 
-  // Unique id for this launch, shared by both panes and the hooks.
-  const id = newSessionId();
-  // tmux treats "." and ":" as target separators, so the session name must
-  // avoid them (users never see this name — it's internal plumbing).
-  const session = `snake-claude-${id}`;
-
-  // Prepare the per-session signal file (starts paused — Claude is idle at
-  // launch) and sweep away any files left by earlier crashed sessions.
-  state.ensureDir();
-  state.pruneStale();
-  state.write(id, state.PAUSE);
-
-  // Install the hooks that flip play/pause. Report but do not abort the launch
-  // on a soft failure — the game is still playable, just not auto-controlled.
-  const res = hooks.install();
-  log(res.message);
-  if (!res.ok) {
-    log('Continuing without auto pause/resume. You can fix settings.json and re-run.');
-  }
+  installHooks();
   log('');
-
-  // Both panes carry SNAKE_CLAUDE_ID so Claude's hooks (child processes of the
-  // claude in the left pane) write to THIS session's state file, and the game
-  // in the right pane watches that same file.
-  const self = process.argv[1];
-  const gameCmd = `SNAKE_CLAUDE_ID=${id} node ${shellQuote(self)} game`;
-  const claudeCmd = `SNAKE_CLAUDE_ID=${id} claude`;
-
   log('Opening tmux split (Claude ⟷ Snake)…');
-  const built = tmux.buildSession({ session, gameCmd, claudeCmd });
+  const session = `snake-claude-${newSessionId()}`;
+  const built = tmux.buildSession({ session, self });
   if (!built.ok) {
     log(`Could not open the tmux split: ${built.message}`);
-    state.remove(id);
     process.exit(1);
   }
-}
-
-function shellQuote(s) {
-  return `'${String(s).replace(/'/g, `'\\''`)}'`;
 }
 
 function main() {

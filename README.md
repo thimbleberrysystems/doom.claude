@@ -10,27 +10,38 @@ Play **Snake** right next to Claude Code. The snake runs **while Claude is think
 
 ## Quick start
 
-### Where do I run it?
+Run Claude **inside tmux**, then launch snake from **inside Claude** with `!`. One-time setup:
 
-In your **normal terminal** — an ordinary shell prompt (bash/zsh). **Not** inside an already-running Claude session: `snake.claude` *starts Claude for you*, right next to the game.
+```sh
+tmux            # 1. start tmux
+claude          # 2. start Claude Code inside it
+```
+
+Then type this **inside Claude** (the `!` prefix runs it in your shell):
+
+```
+!npx snake.claude
+```
 
 <p align="center">
-  <img src="docs/run-here.svg" alt="Run the command at a normal shell prompt, not inside Claude" width="640">
+  <img src="docs/run-here.svg" alt="Type !npx snake.claude inside Claude, which is running in tmux" width="680">
 </p>
 
-One command — no clone, no install (needs only Node.js):
+Snake opens in a pane **right beside Claude**. Submit a prompt → the snake starts moving. When Claude replies → it freezes with a *"your move"* overlay, score intact. Next prompt picks up where you left off.
+
+> **Why inside tmux?** While Claude Code owns your keyboard, the snake needs its own pane to read the arrow keys. tmux provides that pane; the `!` command splits Claude's current window so the game lands next to it. Focus the snake pane (`Ctrl-b` then `→`) to steer.
+
+<details>
+<summary><b>Don't want the <code>!</code> flow? Launch a fresh split instead.</b></summary>
+
+From a **plain terminal** (not inside Claude), run:
 
 ```sh
 npx snake.claude
 ```
 
-That's it. The launcher:
-
-1. Installs two tiny **hooks** into `~/.claude/settings.json` (backed up first).
-2. Opens a **tmux split** and **launches Claude Code in it** — Claude on the left, Snake on the right.
-3. Drops you in the Claude pane, ready to type.
-
-Submit a prompt → the snake starts moving. When Claude finishes → it freezes with a *"your move"* overlay, score intact. Next prompt picks up right where you left off. (That split above ⬆️ is what you'll land in.)
+It creates a fresh tmux session with Claude + Snake pre-split and drops you in. Same game, it just starts Claude for you.
+</details>
 
 ## Controls
 
@@ -42,16 +53,15 @@ Submit a prompt → the snake starts moving. When Claude finishes → it freezes
 
 ## How it works
 
-- **Per-session id** — each launch mints a unique `SNAKE_CLAUDE_ID`, passed to **both** panes. Claude's hooks run as child processes of the `claude` in the left pane, so they inherit it too.
-- **Signal file** — `~/.claude/snake/<id>.state` holds a single word, `play` or `pause`. One file per session.
-- **Hooks** — Claude Code's `UserPromptSubmit` hook writes `play`; the `Stop` hook writes `pause`, into *that session's* file. Fast shell one-liners, no processes spawned, guarded so a Claude session with no snake attached does nothing.
-- **Game** — polls its own file each tick. Zero dependencies: raw ANSI + Node's TTY. It always restores your terminal cleanly, even on a crash, and removes its state file on quit.
+- **Window-keyed signal** — Claude and its snake share one tmux **window**, so the state file is keyed by that window's id: `~/.claude/snake/@N.state` holds a single word, `play` or `pause`. Nothing is injected into Claude's environment — both sides derive the same id from tmux.
+- **Hooks** — Claude Code's `UserPromptSubmit` hook writes `play`; the `Stop` hook writes `pause`, into the current window's file. Fast shell one-liners, no processes spawned, and guarded on `$TMUX` so a Claude session outside tmux (no snake attached) does nothing.
+- **Game** — polls its window's file each tick. Zero dependencies: raw ANSI + Node's TTY. It always restores your terminal cleanly, even on a crash, and removes its state file on quit.
 
 The hooks carry a `# snake.claude` marker, so installing is idempotent and uninstalling is surgical.
 
 ### Multiple sessions
 
-Run as many as you like — every launch gets its own id, tmux session, and state file, so two Claude+Snake pairs never touch each other's play/pause signal. Run `snake.claude game` on its own (no id) for standalone free-play.
+Open snake in as many Claude windows as you like — each window has its own id and state file, so two Claude+Snake pairs never touch each other's play/pause signal. Run `snake.claude game` on its own (outside tmux) for standalone free-play.
 
 ## Uninstall
 

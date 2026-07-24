@@ -8,10 +8,11 @@
 
 const state = require('./state');
 
-// Which Claude session are we coupled to? The launcher passes a unique id via
-// SNAKE_CLAUDE_ID to both this game and the claude process (whose hooks write
-// the matching <id>.state). No id → standalone free-play, no coupling.
-const SESSION_ID = process.env.SNAKE_CLAUDE_ID || null;
+// Which Claude window are we coupled to? The launcher passes the tmux window id
+// via SNAKE_CLAUDE_WINDOW; Claude's hooks (same window) write the matching
+// <window>.state. No window → standalone free-play, no coupling.
+const SESSION_ID =
+  process.env.SNAKE_CLAUDE_WINDOW || process.env.SNAKE_CLAUDE_ID || null;
 
 // ---- ANSI helpers ---------------------------------------------------------
 const ESC = '\x1b[';
