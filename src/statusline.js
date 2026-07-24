@@ -8,9 +8,8 @@
 //   <model> · <state> · ctx <n>% · <t>s · <n> agents      ← live Claude HUD
 //   ❚      ●               ❚  L:R                          ← auto-play Pong
 //
-// State that must persist between runs (ball/paddles/score) lives in a small
-// JSON file, since each invocation is a fresh, short-lived process. The HUD's
-// busy/idle + timer + agent count come from files the hooks write.
+// Everything is keyed by session_id so multiple concurrent Claude sessions each
+// get their own HUD state + their own Pong (no shared-file clobbering).
 //
 // HARD RULE: this must NEVER throw — a crash would break the user's status bar.
 // Everything is wrapped; on any error we print a minimal safe line and exit 0.
@@ -20,12 +19,14 @@ const os = require('os');
 const path = require('path');
 
 const DIR = path.join(os.homedir(), '.claude', 'snake');
-const F = {
-  game: path.join(DIR, 'arcade.json'),
-  activity: path.join(DIR, 'activity'),
-  start: path.join(DIR, 'start'),
-  agents: path.join(DIR, 'agents'),
-};
+
+function sidKey(ctx) {
+  const raw = ctx && typeof ctx.session_id === 'string' ? ctx.session_id : '';
+  const safe = raw.replace(/[^A-Za-z0-9_-]/g, '_');
+  return safe || 'default';
+}
+const P = (name, sid) => path.join(DIR, `${name}.${sid}`);
+const gameFile = (sid) => path.join(DIR, `arcade.${sid}.json`);
 
 // ---- ANSI helpers ----------------------------------------------------------
 const useColor = !process.env.NO_COLOR;
@@ -42,8 +43,6 @@ const white = (s) => color('97', s);
 
 // ---- safe IO ---------------------------------------------------------------
 function readStdin() {
-  // Status line pipes JSON on stdin. When run interactively there's no pipe, so
-  // guard on isTTY to avoid blocking, and never throw.
   if (process.stdin.isTTY) return '';
   try {
     return fs.readFileSync(0, 'utf8');
@@ -71,22 +70,19 @@ function isNum(x) {
 }
 
 // ---- Pong model (auto-play) ------------------------------------------------
-// A one-row rally: ball bounces between two end paddles; a paddle occasionally
-// "misses", conceding a point and resetting the ball from center.
 const MISS = 0.12; // chance a paddle misses when the ball reaches its wall
 const WIN = 9; // first to WIN resets the match
 
 function rand() {
-  // Math.random is fine here (normal Node process, not a workflow sandbox).
   return Math.random();
 }
 function freshGame(w) {
   return { w, bx: Math.floor(w / 2), vx: rand() < 0.5 ? -1 : 1, sl: 0, sr: 0 };
 }
-function loadGame(w) {
+function loadGame(w, sid) {
   let g;
   try {
-    g = JSON.parse(fs.readFileSync(F.game, 'utf8'));
+    g = JSON.parse(fs.readFileSync(gameFile(sid), 'utf8'));
   } catch (_) {
     g = null;
   }
@@ -95,10 +91,10 @@ function loadGame(w) {
   if (!isNum(g.sr)) g.sr = 0;
   return g;
 }
-function saveGame(g) {
+function saveGame(g, sid) {
   try {
     fs.mkdirSync(DIR, { recursive: true });
-    fs.writeFileSync(F.game, JSON.stringify(g));
+    fs.writeFileSync(gameFile(sid), JSON.stringify(g));
   } catch (_) {}
 }
 function tick(g) {
@@ -130,47 +126,59 @@ function tick(g) {
   return g;
 }
 
-// ---- layout ----------------------------------------------------------------
+// ---- width -----------------------------------------------------------------
+function ttyCols() {
+  // The status line is piped (no stdout TTY) and Claude passes no width field,
+  // but the controlling terminal is reachable via /dev/tty — ask it directly.
+  try {
+    const out = require('child_process').execSync('stty size </dev/tty', {
+      encoding: 'utf8',
+      timeout: 200,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const c = parseInt(String(out).trim().split(/\s+/)[1], 10);
+    return isNum(c) ? c : null;
+  } catch (_) {
+    return null;
+  }
+}
 function totalCols(ctx) {
-  // Claude may pass a width; fall back to stdout columns, else a sane default.
   const cand = [
+    ttyCols(),
     ctx && ctx.width,
-    ctx && ctx.terminal && ctx.terminal.width,
     process.stdout && process.stdout.columns,
+    parseInt(process.env.COLUMNS, 10),
   ].find(isNum);
-  return isNum(cand) ? cand : 60;
+  return isNum(cand) ? cand : 80;
 }
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
 
 // ---- HUD -------------------------------------------------------------------
-function buildHud(ctx) {
-  const activity = readFileSafe(F.activity) || 'idle';
-  const busy = activity === 'busy';
+function buildHud(ctx, sid) {
+  const busy = (readFileSafe(P('activity', sid)) || 'idle') === 'busy';
 
-  const model =
-    (ctx.model && (ctx.model.display_name || ctx.model.id)) || 'Claude';
+  const model = (ctx.model && (ctx.model.display_name || ctx.model.id)) || 'Claude';
   const dot = busy ? green('●') : grey('○');
-  const state = busy ? 'thinking' : 'idle';
+  const state = busy ? yellow('thinking') : grey('idle');
 
-  const parts = [bold(white(model)), `${dot} ${busy ? yellow(state) : grey(state)}`];
+  const parts = [bold(white(model)), `${dot} ${state}`];
 
-  const pct =
-    ctx.context_window && isNum(ctx.context_window.used_percentage)
-      ? Math.round(ctx.context_window.used_percentage)
-      : null;
+  const pct = ctx.context_window && isNum(ctx.context_window.used_percentage)
+    ? Math.round(ctx.context_window.used_percentage)
+    : null;
   if (pct != null) parts.push(dim(`ctx ${pct}%`));
 
   if (busy) {
-    const start = parseInt(readFileSafe(F.start), 10);
+    const start = parseInt(readFileSafe(P('start', sid)), 10);
     if (isFinite(start)) {
       const elapsed = Math.max(0, Math.floor(Date.now() / 1000) - start);
       parts.push(dim(`${elapsed}s`));
     }
   }
 
-  const agents = parseInt(readFileSafe(F.agents), 10);
+  const agents = parseInt(readFileSafe(P('agents', sid)), 10);
   if (isFinite(agents) && agents > 0) {
     parts.push(cyan(`${agents} agent${agents === 1 ? '' : 's'}`));
   }
@@ -179,32 +187,30 @@ function buildHud(ctx) {
 }
 
 // ---- game row --------------------------------------------------------------
-function buildGame(cols) {
-  // Reserve room for two paddles + a "  L:R" score label.
-  const w = clamp(cols - 12, 12, 40);
-  const g = tick(loadGame(w));
-  saveGame(g);
+function buildGame(cols, sid) {
+  const w = clamp(cols - 10, 12, 400); // fill the width; leave room for paddles + score
+  const g = tick(loadGame(w, sid));
+  saveGame(g, sid);
 
   const cells = new Array(w).fill(' ');
   cells[clamp(g.bx, 0, w - 1)] = white('●');
   const court = dim('❚') + cells.join('') + dim('❚');
-  const score = '  ' + dim(`${g.sl}:${g.sr}`);
-  return ' ' + court + score;
+  return ' ' + court + '  ' + dim(`${g.sl}:${g.sr}`);
 }
 
 // ---- main ------------------------------------------------------------------
 function main() {
   const ctx = loadJSON(readStdin());
+  const sid = sidKey(ctx);
   const cols = totalCols(ctx);
-  const hud = buildHud(ctx);
-  const game = buildGame(cols);
+  const hud = buildHud(ctx, sid);
+  const game = buildGame(cols, sid);
   process.stdout.write(hud + '\n' + game + '\n');
 }
 
 try {
   main();
 } catch (_) {
-  // Absolute fallback — keep the status bar alive no matter what.
   try {
     process.stdout.write(' snake.claude\n ❚   ●        ❚\n');
   } catch (__) {}

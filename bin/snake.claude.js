@@ -28,7 +28,8 @@ Usage:
   npx snake.claude              Install it (also works as !npx snake.claude
                                 inside Claude). Edits ~/.claude/settings.json
                                 (backed up first).
-  npx snake.claude uninstall    Remove the status line and hooks.
+  npx snake.claude off          Turn it off (remove the status line + hooks).
+  npx snake.claude on           Turn it back on. ('uninstall'/'install' also work.)
   npx snake.claude probe        Temporarily show a diagnostic status line
                                 (numbered rows + JSON fields) so you can see
                                 your height cap. Run 'install' to switch back.
@@ -51,6 +52,7 @@ function main() {
   const arg = (process.argv[2] || '').toLowerCase();
 
   switch (arg) {
+    case 'on':
     case '':
     case 'install': {
       const res = install.install('statusline');
@@ -70,6 +72,7 @@ function main() {
       process.exit(res.ok ? 0 : 1);
       return;
     }
+    case 'off':
     case 'uninstall':
     case 'remove': {
       const res = install.uninstall();

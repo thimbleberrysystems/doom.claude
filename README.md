@@ -48,18 +48,25 @@ npx snake.claude install   # switch back to the game
 
 Count the numbered rows you can see — that's your height budget.
 
-## Uninstall
+## Turning it off / on
 
-Removes only what we added (and restores any status line you had before):
+A status line can't have a clickable close button (it can't receive input), so use:
 
 ```sh
-npx snake.claude uninstall
+npx snake.claude off     # remove the status line + hooks (restores any you had before)
+npx snake.claude on      # put it back
 ```
+
+(`uninstall` / `install` are aliases.)
+
+## Multiple Claude sessions
+
+All state is keyed by `session_id`, so every open Claude session gets its **own** HUD (thinking/idle, timer, agents) and its **own** Pong — no cross-session interference.
 
 ## How it works
 
-- **Status line** — `~/.claude/snake/statusline.js` runs each refresh (with `refreshInterval: 1`). It reads the JSON context Claude pipes in, advances Pong one tick, and prints two rows. It **persists game state to a file** between runs and is written to **never crash** the status bar.
-- **Hooks** — `UserPromptSubmit`/`Stop` flag busy/idle and stamp the turn's start time; `SubagentStart`/`SubagentStop` keep an agent count. Fast shell one-liners, tagged with a `# snake.claude` marker so install is idempotent and uninstall is surgical.
+- **Status line** — `~/.claude/snake/statusline.js` runs each refresh (with `refreshInterval: 1`). It reads the JSON context Claude pipes in, advances Pong one tick, and prints two rows sized to your terminal width (read from `/dev/tty`). It **persists per-session game state** between runs and is written to **never crash** the status bar.
+- **Hooks** — `UserPromptSubmit`/`Stop` flag busy/idle and stamp the turn's start time; `SubagentStart`/`SubagentStop` keep an agent count. Each parses `session_id` from its own input so state is per-session. Fast shell one-liners, tagged with a `# snake.claude` marker so install is idempotent (it also replaces stale entries from older versions) and uninstall is surgical.
 
 ## Requirements
 

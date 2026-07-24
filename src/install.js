@@ -40,19 +40,23 @@ function isOursCommand(cmd) {
 }
 
 // Hook commands — fast shell one-liners, each guaranteed to exit 0, each tagged
-// with the marker so install is idempotent and uninstall is surgical.
+// with the marker so install is idempotent and uninstall is surgical. State is
+// keyed by session_id (parsed from the hook's own stdin JSON with sed) so
+// concurrent Claude sessions never clobber each other's HUD.
+const SID = `sid=$(sed -n 's/.*"session_id":"\\([^"]*\\)".*/\\1/p'); [ -z "$sid" ] && sid=default`;
 const HOOKS = {
   UserPromptSubmit:
-    `mkdir -p "$HOME/.claude/snake" && printf busy > "$HOME/.claude/snake/activity" ` +
-    `&& date +%s > "$HOME/.claude/snake/start" && printf 0 > "$HOME/.claude/snake/agents" ; true  ${MARKER}`,
+    `d="$HOME/.claude/snake"; mkdir -p "$d"; ${SID}; ` +
+    `printf busy > "$d/activity.$sid"; date +%s > "$d/start.$sid"; printf 0 > "$d/agents.$sid"; true  ${MARKER}`,
   Stop:
-    `printf idle > "$HOME/.claude/snake/activity" && printf 0 > "$HOME/.claude/snake/agents" ; true  ${MARKER}`,
+    `d="$HOME/.claude/snake"; ${SID}; ` +
+    `printf idle > "$d/activity.$sid"; printf 0 > "$d/agents.$sid"; true  ${MARKER}`,
   SubagentStart:
-    `mkdir -p "$HOME/.claude/snake" ; c=$(cat "$HOME/.claude/snake/agents" 2>/dev/null || echo 0) ; ` +
-    `printf %s "$((c+1))" > "$HOME/.claude/snake/agents" ; true  ${MARKER}`,
+    `d="$HOME/.claude/snake"; mkdir -p "$d"; ${SID}; ` +
+    `c=$(cat "$d/agents.$sid" 2>/dev/null || echo 0); printf %s "$((c+1))" > "$d/agents.$sid"; true  ${MARKER}`,
   SubagentStop:
-    `c=$(cat "$HOME/.claude/snake/agents" 2>/dev/null || echo 0) ; n=$((c-1)) ; ` +
-    `[ "$n" -lt 0 ] && n=0 ; printf %s "$n" > "$HOME/.claude/snake/agents" ; true  ${MARKER}`,
+    `d="$HOME/.claude/snake"; ${SID}; ` +
+    `c=$(cat "$d/agents.$sid" 2>/dev/null || echo 0); n=$((c-1)); [ "$n" -lt 0 ] && n=0; printf %s "$n" > "$d/agents.$sid"; true  ${MARKER}`,
 };
 
 function shellQuote(s) {
@@ -185,11 +189,6 @@ function install(mode) {
     return { ok: false, message: `Failed to write settings: ${err.message}` };
   }
 
-  // Prime the initial state so the first render looks right.
-  try {
-    fs.writeFileSync(path.join(SNAKE_DIR, 'activity'), 'idle');
-  } catch (_) {}
-
   const what = mode === 'probe' ? 'diagnostic probe' : 'Pong + HUD status line';
   return {
     ok: true,
@@ -243,12 +242,11 @@ function uninstall() {
     return { ok: false, message: `Failed to write settings: ${err.message}` };
   }
 
-  // Remove the installed runtime + transient state (leave the backup).
-  for (const f of ['statusline.js', 'probe.js', 'prev-statusline.json', 'arcade.json', 'activity', 'start', 'agents', 'highscore']) {
-    try {
-      fs.unlinkSync(path.join(SNAKE_DIR, f));
-    } catch (_) {}
-  }
+  // Remove the whole runtime + per-session state dir (the settings backup lives
+  // in ~/.claude/, not here, so it survives).
+  try {
+    fs.rmSync(SNAKE_DIR, { recursive: true, force: true });
+  } catch (_) {}
 
   return { ok: true, message: 'Removed the snake.claude status line and hooks from settings.json.' };
 }
