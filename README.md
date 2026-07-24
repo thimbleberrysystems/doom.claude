@@ -12,10 +12,10 @@ Play **Snake** right next to Claude Code. The snake runs **while Claude is think
 
 ## Quick start
 
-One command — no clone, no install:
+One command — no clone, no install (needs only Node.js):
 
 ```sh
-npx github:thimbleberrysystems/snake.claude
+npx snake.claude
 ```
 
 That's it. The launcher:
@@ -52,7 +52,7 @@ Run as many as you like — every launch gets its own id, tmux session, and stat
 Removes only the snake-claude hooks; your other settings are untouched:
 
 ```sh
-npx github:thimbleberrysystems/snake.claude uninstall
+npx snake.claude uninstall
 ```
 
 ## Requirements

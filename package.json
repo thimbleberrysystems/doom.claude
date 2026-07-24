@@ -1,11 +1,16 @@
 {
-  "name": "snake-claude",
+  "name": "snake.claude",
   "version": "1.0.0",
   "description": "Play Snake beside Claude Code — the snake runs while Claude is thinking and pauses (keeping your score) when Claude is done.",
   "bin": {
-    "snake-claude": "bin/snake-claude.js"
+    "snake.claude": "bin/snake-claude.js"
   },
   "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thimbleberrysystems/snake.claude.git"
+  },
+  "homepage": "https://github.com/thimbleberrysystems/snake.claude#readme",
   "files": [
     "bin/",
     "src/",
