@@ -1,11 +1,11 @@
 # kaboom.claude 😈
 
-**Real [Freedoom](https://freedoom.github.io/), playable right next to Claude Code — in one command.** `npx kaboom.claude` opens a split: Claude on one side, the game on the other. The game **plays while Claude is thinking** and **pauses when it replies** — so you frag demons in the dead time and never miss Claude's answer. No install, no WAD hunting, no compiler; the real [doomgeneric](https://github.com/ozkl/doomgeneric) engine runs as WebAssembly with truecolor half-block rendering, and the free BSD-licensed game data ships in the package.
+**Real [Freedoom](https://freedoom.github.io/), playable right next to Claude Code — in one command.** `npx kaboom.claude` opens a split: Claude on one side, the game on the other. The game **plays while Claude is thinking** and **pauses when it replies** — so you frag demons in the dead time and never miss Claude's answer. No install, no WAD hunting, no compiler; the real [doomgeneric](https://github.com/ozkl/doomgeneric) engine runs as WebAssembly with truecolor sextant-block rendering, and the free BSD-licensed game data ships in the package.
 
 <p align="center">
   <img src="docs/freedoom-title.png" alt="Freedoom running in the terminal via kaboom.claude" width="600">
   <br>
-  <em>Actual output from the bundled engine (Freedoom Phase 1) — rendered in your terminal as truecolor half-blocks.</em>
+  <em>Actual output from the bundled engine (Freedoom Phase 1) — rendered in your terminal as truecolor sextant blocks.</em>
 </p>
 
 ## Play
@@ -35,7 +35,7 @@ Each pane is **labelled** (`◀ CLAUDE` / `GAME ▶`) and the **focused pane get
 - **Game keys:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use · `1`–`7` weapons · `Q` quit.
 - **Buttons:** `◀ Claude` · `Game ▶` · `⤢ Zoom` · `✕ Close game` (closes the game only — **Claude keeps running**; `Q` does the same). Runs on its own tmux socket, so your normal tmux config is untouched; remove the pause hooks with `npx kaboom.claude unhook`.
 
-> **Rendering:** the picture is drawn with **quadrant blocks** (2×2 pixels per character cell) for legibility, and **frame-diffing** keeps it smooth even over SSH. It's still a terminal, so for the crispest view press **Alt-z** (or the **⤢ Zoom** button) to make the game fullscreen. On terminals with the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) controls use real key press/release for crisp strafe/run; elsewhere they fall back to autorepeat.
+> **Rendering:** the picture is drawn with **sextant blocks** (2×3 pixels per character cell), and each cell's colours are split into foreground/background by **colour clustering** (not brightness) — that's what keeps the menu's red-on-red text and the scoreboard legible where a plain half-block render turns them to mush. **Frame-diffing** keeps it smooth even over SSH. It's still a terminal, so for the crispest view press **Alt-z** (or the **⤢ Zoom** button) to make the game fullscreen. Sextant glyphs need a modern terminal font (Kitty, Ghostty, WezTerm, foot, recent Windows Terminal / VTE); if yours shows blanks, set `KABOOM_BLOCKS=quad` to fall back to 2×2 quadrant blocks. On terminals with the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) controls use real key press/release for crisp strafe/run; elsewhere they fall back to autorepeat.
 
 ### No tmux? Play full-screen
 
@@ -48,7 +48,7 @@ Runs just the game, full-screen, on its own (no Claude split, no tmux).
 ## How it works
 
 - The engine is [**doomgeneric**](https://github.com/ozkl/doomgeneric) compiled to **WebAssembly** — it runs under plain Node, no native modules, no system packages. (The WASM build is vendored from [pi-doom](https://github.com/badlogic/pi-doom).)
-- Each 640×400 frame is drawn with half-block `▀` characters: the top pixel is the cell's foreground color, the bottom pixel its background — two pixels per character cell, 24-bit color, fit to your terminal.
+- Each 640×400 frame is drawn with Unicode **sextant** glyphs — a 2×3 grid of sub-pixels per character cell (6 pixels/cell). Every cell's six sub-pixels are clustered by colour into a foreground and a background, so fine same-brightness detail (like Doom's red menu text) survives instead of averaging away. 24-bit colour, fit to your terminal.
 - Keyboard comes from raw-mode stdin, mapped to Doom key codes.
 - The game data is **[Freedoom](https://freedoom.github.io/) Phase 1** (`freedoom1.wad`) — a free, **BSD-3-Clause** IWAD with **no id Software assets**. Bundled, so there's nothing to fetch.
 

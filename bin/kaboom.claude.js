@@ -61,12 +61,19 @@ function main() {
       // Internal: status-bar button dispatch from `split`.
       // argv: click <range> <socket> <gamePane> <claudePane>
       const [range, socket, gamePane, claudePane] = process.argv.slice(3);
+      // Kept identical to CLOSE_CLAUDE_BAR in src/play.js.
+      const CLOSE_CLAUDE_BAR = ' #[fg=colour231,bg=colour88]#[range=user|quitclaude] ✕ Close Claude — end session #[norange]#[default]';
       const { spawnSync } = require('child_process');
       const tx = (a) => spawnSync('tmux', ['-L', socket, ...a], { stdio: 'ignore' });
       if (range === 'claude') tx(['select-pane', '-t', claudePane]);    // switch to Claude
       else if (range === 'game') tx(['select-pane', '-t', gamePane]);   // switch to the game
       else if (range === 'zoom') tx(['resize-pane', '-Z', '-t', gamePane]);
-      else if (range === 'quit') tx(['kill-pane', '-t', gamePane]);     // close ONLY the game pane; Claude stays
+      else if (range === 'quit') {                                      // close the game only…
+        tx(['set-option', '-g', 'status-right', CLOSE_CLAUDE_BAR]);     // …and flip the button to "✕ Close Claude"
+        tx(['kill-pane', '-t', gamePane]);
+      } else if (range === 'quitclaude') {                             // …which then ends the whole split
+        tx(['kill-session', '-t', claudePane]);
+      }
       process.exit(0);
       return;
     }

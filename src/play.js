@@ -34,6 +34,9 @@ let kittyEnabled = false;
 const KID = process.env.KABOOM_ID || null;
 const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`) : null;
 const SELF_PANE = process.env.TMUX_PANE || ''; // this game's tmux pane
+// After the game closes, the status bar shows just this — a ✕ that ends the
+// whole split (kept identical in bin/kaboom.claude.js).
+const CLOSE_CLAUDE_BAR = ' #[fg=colour231,bg=colour88]#[range=user|quitclaude] ✕ Close Claude — end session #[norange]#[default]';
 let focused = false;       // game pane focused? starts false (split focuses Claude first)
 let paused = !!KID;        // derived: coupled & not focused → frozen
 let frozenDirty = !!KID;
@@ -64,50 +67,67 @@ process.on('uncaughtException', (err) => {
 // standalone, just exit.
 function quitGame() {
   teardown();
-  if (KID && SELF_PANE) tmuxSelf(['kill-pane', '-t', SELF_PANE]);
+  if (KID && SELF_PANE) {
+    // Closing the game flips the bottom-bar button to "✕ Close Claude", then
+    // closes only the game pane (Claude keeps running).
+    tmuxSelf(['set-option', '-g', 'status-right', CLOSE_CLAUDE_BAR]);
+    tmuxSelf(['kill-pane', '-t', SELF_PANE]);
+  }
   process.exit(0);
 }
 
-// ---- rendering (quadrant blocks: 2×2 pixels per cell = double the detail) ---
-// Each terminal cell shows a 2×2 sub-pixel block using one of 16 quadrant glyphs
-// (bit = foreground), so horizontal resolution doubles vs half-blocks and text
-// is far more legible. Per cell we pick fg/bg by splitting the 4 sub-pixels at
-// their mean luminance.
+// ---- rendering (sextant blocks: 2×3 pixels per cell + colour clustering) ----
+// Each cell shows a 2×3 sub-pixel block using a sextant glyph. Two wins over
+// half/quadrant blocks: (1) 3 sub-pixels TALL (not 2) — the extra vertical detail
+// is what makes small text legible; (2) fg/bg are chosen by clustering the 6
+// sub-pixels into two colours by RGB distance, NOT luminance — so red-on-red menu
+// text (similar brightness, different colour) no longer merges into noise.
+// Sextants need a modern terminal font (Kitty/Ghostty/WezTerm/foot/recent Windows
+// Terminal & VTE); set KABOOM_BLOCKS=quad to fall back to 2×2 quadrant glyphs.
+const USE_SEXTANT = process.env.KABOOM_BLOCKS !== 'quad';
+const SEXTANT = (() => {
+  const t = new Array(64);
+  t[0] = ' '; t[63] = '█'; t[21] = '▌'; t[42] = '▐';
+  let cp = 0x1FB00;
+  for (let v = 1; v < 63; v++) { if (v === 21 || v === 42) continue; t[v] = String.fromCodePoint(cp++); }
+  return t;
+})();
 const QUAD = [' ', '▗', '▖', '▄', '▝', '▐', '▞', '▟', '▘', '▚', '▌', '▙', '▀', '▜', '▛', '█'];
+// Sub-pixel layout: 2 wide (half-cell apart) × N tall. Sextant N=3, quadrant N=2.
+const NY = USE_SEXTANT ? 3 : 2;
+const DX = USE_SEXTANT ? [0, 1, 0, 1, 0, 1] : [0, 1, 0, 1];
+const DY = USE_SEXTANT ? [0, 0, 1, 1, 2, 2] : [0, 0, 1, 1];
+const GLYPH = USE_SEXTANT ? SEXTANT : QUAD;
 
 function px(fb, sw, sh, x, y) {
   if (x < 0 || y < 0 || x >= sw || y >= sh) return [0, 0, 0];
   const i = (y * sw + x) * 4; // memory order B,G,R,A
   return [fb[i + 2], fb[i + 1], fb[i]];
 }
-
-// A terminal cell is ~twice as tall as it is wide, so within a cell the two
-// horizontal sub-pixels are only HALF a cell apart while the two vertical ones
-// are a full half-cell apart. Using that keeps the aspect correct (same as the
-// old half-block render) while doubling horizontal detail.
 function layout(sw, sh, cols, rows) {
-  const hpx = rows * 2;
-  const scale = Math.min(cols / sw, hpx / sh);
-  return { scale, offX: (cols - sw * scale) / 2, offY: (hpx - sh * scale) / 2 };
+  const vpx = rows * 2; // vertical extent in half-cell units (cell is ~2× tall)
+  const scale = Math.min(cols / sw, vpx / sh);
+  return { scale, offX: (cols - sw * scale) / 2, offY: (vpx - sh * scale) / 2 };
 }
+function dist2(a, b) { const r = a[0] - b[0], g = a[1] - b[1], b2 = a[2] - b[2]; return r * r + g * g + b2 * b2; }
 
-// Returns [Fr,Fg,Fb, Br,Bg,Bb, glyphIndex] for cell (cx,cy).
+// Returns [Fr,Fg,Fb, Br,Bg,Bb, patternBits] for cell (cx,cy).
 function cell(fb, sw, sh, cx, cy, L) {
-  const dx = [0, 1, 0, 1], dy = [0, 0, 1, 1]; // tl, tr, bl, br
-  const p = [], lum = [];
-  let sum = 0;
-  for (let k = 0; k < 4; k++) {
-    const sx = Math.floor((cx + dx[k] * 0.5 - L.offX) / L.scale);
-    const sy = Math.floor((cy * 2 + dy[k] - L.offY) / L.scale);
-    const c = px(fb, sw, sh, sx, sy);
-    p.push(c);
-    const l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
-    lum.push(l); sum += l;
+  const n = DX.length; // 6 (sextant) or 4 (quadrant)
+  const vstep = 2 / NY; // vertical sub-pixel pitch in half-cell units
+  const p = [];
+  for (let k = 0; k < n; k++) {
+    const sx = Math.floor((cx + DX[k] * 0.5 - L.offX) / L.scale);
+    const sy = Math.floor((cy * 2 + DY[k] * vstep - L.offY) / L.scale);
+    p.push(px(fb, sw, sh, sx, sy));
   }
-  const avg = sum / 4;
+  // Two-colour split seeded by the most-distant sub-pixel pair (colour, not luma).
+  let mi = 0, mj = 1, md = -1;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const d = dist2(p[i], p[j]); if (d > md) { md = d; mi = i; mj = j; } }
+  const A = p[mi], B = p[mj];
   let fr = 0, fg = 0, fbb = 0, fn = 0, br = 0, bg = 0, bb = 0, bn = 0, bits = 0;
-  for (let k = 0; k < 4; k++) {
-    if (lum[k] >= avg) { fr += p[k][0]; fg += p[k][1]; fbb += p[k][2]; fn++; bits |= (8 >> k); }
+  for (let k = 0; k < n; k++) {
+    if (dist2(p[k], A) <= dist2(p[k], B)) { fr += p[k][0]; fg += p[k][1]; fbb += p[k][2]; fn++; bits |= (1 << k); }
     else { br += p[k][0]; bg += p[k][1]; bb += p[k][2]; bn++; }
   }
   const Fr = fn ? (fr / fn) | 0 : 0, Fg = fn ? (fg / fn) | 0 : 0, Fb = fn ? (fbb / fn) | 0 : 0;
@@ -126,7 +146,7 @@ function frameToString(fb, sw, sh, cols, rows) {
       const fg = (c[0] << 16) | (c[1] << 8) | c[2], bg = (c[3] << 16) | (c[4] << 8) | c[5];
       if (fg !== lastFg) { buf += `\x1b[38;2;${c[0]};${c[1]};${c[2]}m`; lastFg = fg; }
       if (bg !== lastBg) { buf += `\x1b[48;2;${c[3]};${c[4]};${c[5]}m`; lastBg = bg; }
-      buf += QUAD[c[6]];
+      buf += GLYPH[c[6]];
     }
     buf += '\x1b[0m';
     if (cy < rows - 1) buf += '\n';
@@ -158,7 +178,7 @@ function renderFrame(eng) {
       else if (skip > 0) { buf += `\x1b[${skip}C`; skip = 0; lastFg = lastBg = -1; }
       if (fg !== lastFg) { buf += `\x1b[38;2;${c[0]};${c[1]};${c[2]}m`; lastFg = fg; }
       if (bg !== lastBg) { buf += `\x1b[48;2;${c[3]};${c[4]};${c[5]}m`; lastBg = bg; }
-      buf += QUAD[c[6]];
+      buf += GLYPH[c[6]];
     }
     if (cursorSet) buf += '\x1b[0m';
   }
@@ -238,6 +258,15 @@ function updatePaused() {
 function tmuxSelf(args) {
   try { require('child_process').spawnSync('tmux', args, { stdio: 'ignore' }); } catch (_) {}
 }
+// Zoom the game pane fullscreen (only if not already zoomed) for readability.
+function ensureZoom() {
+  try {
+    const z = require('child_process')
+      .spawnSync('tmux', ['display-message', '-p', '#{window_zoomed_flag}'], { encoding: 'utf8' })
+      .stdout.trim();
+    if (z === '0') tmuxSelf(['resize-pane', '-Z']);
+  } catch (_) {}
+}
 // Read Claude's state. When Claude STARTS working, bring the game up so you can
 // play the wait. When Claude replies, only show a note — never switch you back.
 function pollClaude() {
@@ -249,10 +278,11 @@ function pollClaude() {
     if (s === 'busy') {
       claudeReady = false;
       prev = null;
-      // Focus the game pane and start playing (deterministic, not reliant on
-      // focus events). This is the ONLY automatic switch — and it's toward the
-      // game, never back to Claude.
+      // Focus the game pane, zoom it fullscreen (readable), and start playing.
+      // This is the ONLY automatic switch — and it's toward the game, never back
+      // to Claude. (Switching to Claude later un-zooms automatically.)
       if (SELF_PANE) tmuxSelf(['select-pane', '-t', SELF_PANE]);
+      ensureZoom();
       if (!focused) { focused = true; updatePaused(); }
     } else if (s === 'idle') {
       if (!claudeReady) { claudeReady = true; prev = null; }
