@@ -18,7 +18,7 @@ npx doom.claude
 
 **Controls:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use/open · `1`–`7` weapons · `Tab` map · `Esc` menu · `Q` quit.
 
-> Movement is smoothest on terminals with truecolor. Since terminals send key-*press* only, held-to-move relies on key autorepeat (tap again to keep moving); it feels best on terminals that support the Kitty keyboard protocol (Kitty, Ghostty, WezTerm).
+> **Controls feel:** on terminals that support the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) it auto-negotiates real key press/release events, so strafing and running are crisp. On other terminals it falls back to press-only with autorepeat (tap again to keep moving). Rendering uses **frame-diffing** (only changed cells are repainted), so it stays smooth even over SSH.
 
 ## How it works
 
