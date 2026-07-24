@@ -1,0 +1,32 @@
+{
+  "name": "snake-claude",
+  "version": "1.0.0",
+  "description": "Play Snake beside Claude Code — the snake runs while Claude is thinking and pauses (keeping your score) when Claude is done.",
+  "bin": {
+    "snake-claude": "bin/snake-claude.js"
+  },
+  "type": "commonjs",
+  "files": [
+    "bin/",
+    "src/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "os": [
+    "linux",
+    "darwin"
+  ],
+  "keywords": [
+    "snake",
+    "game",
+    "claude",
+    "claude-code",
+    "tmux",
+    "cli",
+    "terminal",
+    "tui"
+  ],
+  "license": "MIT"
+}
