@@ -38,7 +38,7 @@ function run() {
     log('  • Fedora:             sudo dnf install tmux');
     log('  • macOS (Homebrew):   brew install tmux');
     log('');
-    log('Or just play full-screen:  npx kaboom.claude');
+    log('Without tmux you can still play the game full-screen:  npx kaboom.claude play');
     process.exit(1);
   }
   if (!process.stdin.isTTY || !process.stdout.isTTY) {

@@ -1,6 +1,6 @@
 # kaboom.claude 😈
 
-**A real terminal FPS, in one command.** No install, no WAD hunting, no compiler — `npx kaboom.claude` runs the [doomgeneric](https://github.com/ozkl/doomgeneric) engine (compiled to WebAssembly) full-screen with truecolor half-block rendering, playing **Freedoom** — a free, BSD-licensed, Doom-compatible game. Nothing to download, no proprietary assets.
+**Real [Freedoom](https://freedoom.github.io/), playable right next to Claude Code — in one command.** `npx kaboom.claude` opens a split: Claude on one side, the game on the other. The game **plays while Claude is thinking** and **pauses when it replies** — so you frag demons in the dead time and never miss Claude's answer. No install, no WAD hunting, no compiler; the real [doomgeneric](https://github.com/ozkl/doomgeneric) engine runs as WebAssembly with truecolor half-block rendering, and the free BSD-licensed game data ships in the package.
 
 <p align="center">
   <img src="docs/freedoom-title.png" alt="Freedoom running in the terminal via kaboom.claude" width="600">
@@ -10,23 +10,13 @@
 
 ## Play
 
-From a normal terminal (needs a real TTY — not Claude's `!`):
+From a normal terminal (needs `tmux`; Linux/macOS/WSL):
 
 ```sh
 npx kaboom.claude
 ```
 
-**Controls:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use/open · `1`–`7` weapons · `Tab` map · `Esc` menu · `Q` quit.
-
-> **Controls feel:** on terminals that support the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) it auto-negotiates real key press/release events, so strafing and running are crisp. On other terminals it falls back to press-only with autorepeat (tap again to keep moving). Rendering uses **frame-diffing** (only changed cells are repainted), so it stays smooth even over SSH.
-
-## Play it *next to* Claude
-
-Want the game running while you use Claude Code? A full-screen game can't share one terminal with Claude, so this opens a **tmux split** — Claude on the left, the game on the right:
-
-```sh
-npx kaboom.claude split
-```
+That's it — Claude and the game open side by side:
 
 ```
 ┌─ Claude ─────┐┌─ kaboom ─────┐
@@ -38,9 +28,18 @@ npx kaboom.claude split
 - **Switch panes (easy):** just **click** a pane, or press **Alt-←/Alt-→** — no tmux prefix needed. (Classic `Ctrl-b` arrows work too.)
 - **Auto play/pause:** the game **plays while Claude is thinking** and **pauses when it replies** (a banner shows the controls).
 - **Play anytime:** press **`P`** in the game to play or pause manually — so you can keep playing even while Claude is idle.
-- The controls stay visible in the tmux status bar. Runs on its own tmux socket, so your normal tmux config is untouched. Remove the pause hooks later with `npx kaboom.claude unhook`.
+- **Game controls:** `WASD` / arrows move · `F` or `Ctrl` fire · `Space` use · `1`–`7` weapons · `Tab` map · `Esc` menu · `Q` quit.
+- Controls stay visible in the tmux status bar. It runs on its own tmux socket, so your normal tmux config is untouched. Remove the pause hooks later with `npx kaboom.claude unhook`.
 
-(Requires `tmux`; Linux/macOS/WSL.)
+> **Controls feel:** on terminals with the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) it negotiates real key press/release for crisp strafe/run; elsewhere it falls back to autorepeat. Rendering uses **frame-diffing** so it stays smooth even over SSH.
+
+### No tmux? Play full-screen
+
+```sh
+npx kaboom.claude play
+```
+
+Runs just the game, full-screen, on its own (no Claude split, no tmux).
 
 ## How it works
 
