@@ -68,31 +68,65 @@ function quitGame() {
   process.exit(0);
 }
 
-// ---- rendering --------------------------------------------------------------
-function pixel(fb, sw, sh, sx, sy) {
-  if (sx < 0 || sy < 0 || sx >= sw || sy >= sh) return [0, 0, 0];
-  const i = (sy * sw + sx) * 4; // memory order B,G,R,A
+// ---- rendering (quadrant blocks: 2×2 pixels per cell = double the detail) ---
+// Each terminal cell shows a 2×2 sub-pixel block using one of 16 quadrant glyphs
+// (bit = foreground), so horizontal resolution doubles vs half-blocks and text
+// is far more legible. Per cell we pick fg/bg by splitting the 4 sub-pixels at
+// their mean luminance.
+const QUAD = [' ', '▗', '▖', '▄', '▝', '▐', '▞', '▟', '▘', '▚', '▌', '▙', '▀', '▜', '▛', '█'];
+
+function px(fb, sw, sh, x, y) {
+  if (x < 0 || y < 0 || x >= sw || y >= sh) return [0, 0, 0];
+  const i = (y * sw + x) * 4; // memory order B,G,R,A
   return [fb[i + 2], fb[i + 1], fb[i]];
+}
+
+// A terminal cell is ~twice as tall as it is wide, so within a cell the two
+// horizontal sub-pixels are only HALF a cell apart while the two vertical ones
+// are a full half-cell apart. Using that keeps the aspect correct (same as the
+// old half-block render) while doubling horizontal detail.
+function layout(sw, sh, cols, rows) {
+  const hpx = rows * 2;
+  const scale = Math.min(cols / sw, hpx / sh);
+  return { scale, offX: (cols - sw * scale) / 2, offY: (hpx - sh * scale) / 2 };
+}
+
+// Returns [Fr,Fg,Fb, Br,Bg,Bb, glyphIndex] for cell (cx,cy).
+function cell(fb, sw, sh, cx, cy, L) {
+  const dx = [0, 1, 0, 1], dy = [0, 0, 1, 1]; // tl, tr, bl, br
+  const p = [], lum = [];
+  let sum = 0;
+  for (let k = 0; k < 4; k++) {
+    const sx = Math.floor((cx + dx[k] * 0.5 - L.offX) / L.scale);
+    const sy = Math.floor((cy * 2 + dy[k] - L.offY) / L.scale);
+    const c = px(fb, sw, sh, sx, sy);
+    p.push(c);
+    const l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+    lum.push(l); sum += l;
+  }
+  const avg = sum / 4;
+  let fr = 0, fg = 0, fbb = 0, fn = 0, br = 0, bg = 0, bb = 0, bn = 0, bits = 0;
+  for (let k = 0; k < 4; k++) {
+    if (lum[k] >= avg) { fr += p[k][0]; fg += p[k][1]; fbb += p[k][2]; fn++; bits |= (8 >> k); }
+    else { br += p[k][0]; bg += p[k][1]; bb += p[k][2]; bn++; }
+  }
+  const Fr = fn ? (fr / fn) | 0 : 0, Fg = fn ? (fg / fn) | 0 : 0, Fb = fn ? (fbb / fn) | 0 : 0;
+  const Br = bn ? (br / bn) | 0 : Fr, Bg = bn ? (bg / bn) | 0 : Fg, Bb = bn ? (bb / bn) | 0 : Fb;
+  return [Fr, Fg, Fb, Br, Bg, Bb, bits];
 }
 
 // Pure: whole-frame ANSI string (used by tests).
 function frameToString(fb, sw, sh, cols, rows) {
-  const thpx = rows * 2;
-  const scale = Math.min(cols / sw, thpx / sh);
-  const offX = Math.floor((cols - sw * scale) / 2);
-  const offY = Math.floor((thpx - sh * scale) / 2);
+  const L = layout(sw, sh, cols, rows);
   let buf = '\x1b[H';
   for (let cy = 0; cy < rows; cy++) {
     let lastFg = -1, lastBg = -1;
     for (let cx = 0; cx < cols; cx++) {
-      const sx = Math.floor((cx - offX) / scale);
-      const t = pixel(fb, sw, sh, sx, Math.floor((cy * 2 - offY) / scale));
-      const b = pixel(fb, sw, sh, sx, Math.floor((cy * 2 + 1 - offY) / scale));
-      const fg = (t[0] << 16) | (t[1] << 8) | t[2];
-      const bg = (b[0] << 16) | (b[1] << 8) | b[2];
-      if (fg !== lastFg) { buf += `\x1b[38;2;${t[0]};${t[1]};${t[2]}m`; lastFg = fg; }
-      if (bg !== lastBg) { buf += `\x1b[48;2;${b[0]};${b[1]};${b[2]}m`; lastBg = bg; }
-      buf += '▀';
+      const c = cell(fb, sw, sh, cx, cy, L);
+      const fg = (c[0] << 16) | (c[1] << 8) | c[2], bg = (c[3] << 16) | (c[4] << 8) | c[5];
+      if (fg !== lastFg) { buf += `\x1b[38;2;${c[0]};${c[1]};${c[2]}m`; lastFg = fg; }
+      if (bg !== lastBg) { buf += `\x1b[48;2;${c[3]};${c[4]};${c[5]}m`; lastBg = bg; }
+      buf += QUAD[c[6]];
     }
     buf += '\x1b[0m';
     if (cy < rows - 1) buf += '\n';
@@ -108,30 +142,23 @@ function renderFrame(eng) {
   const sw = eng.width, sh = eng.height;
   const cols = out.columns || 80, rows = out.rows || 24;
   if (cols !== prevCols || rows !== prevRows) { prev = null; prevCols = cols; prevRows = rows; out.write('\x1b[2J'); }
+  const L = layout(sw, sh, cols, rows);
 
-  const thpx = rows * 2;
-  const scale = Math.min(cols / sw, thpx / sh);
-  const offX = Math.floor((cols - sw * scale) / 2);
-  const offY = Math.floor((thpx - sh * scale) / 2);
-
-  const cur = new Int32Array(cols * rows * 2);
+  const cur = new Int32Array(cols * rows * 3);
   let buf = '';
   for (let cy = 0; cy < rows; cy++) {
     let lastFg = -1, lastBg = -1, skip = 0, cursorSet = false;
     for (let cx = 0; cx < cols; cx++) {
-      const sx = Math.floor((cx - offX) / scale);
-      const t = pixel(fb, sw, sh, sx, Math.floor((cy * 2 - offY) / scale));
-      const b = pixel(fb, sw, sh, sx, Math.floor((cy * 2 + 1 - offY) / scale));
-      const fg = (t[0] << 16) | (t[1] << 8) | t[2];
-      const bg = (b[0] << 16) | (b[1] << 8) | b[2];
-      const idx = (cy * cols + cx) * 2;
-      cur[idx] = fg; cur[idx + 1] = bg;
-      if (prev && prev[idx] === fg && prev[idx + 1] === bg) { skip++; continue; }
+      const c = cell(fb, sw, sh, cx, cy, L);
+      const fg = (c[0] << 16) | (c[1] << 8) | c[2], bg = (c[3] << 16) | (c[4] << 8) | c[5];
+      const idx = (cy * cols + cx) * 3;
+      cur[idx] = fg; cur[idx + 1] = bg; cur[idx + 2] = c[6];
+      if (prev && prev[idx] === fg && prev[idx + 1] === bg && prev[idx + 2] === c[6]) { skip++; continue; }
       if (!cursorSet) { buf += `\x1b[${cy + 1};${cx + 1}H`; cursorSet = true; skip = 0; lastFg = lastBg = -1; }
       else if (skip > 0) { buf += `\x1b[${skip}C`; skip = 0; lastFg = lastBg = -1; }
-      if (fg !== lastFg) { buf += `\x1b[38;2;${t[0]};${t[1]};${t[2]}m`; lastFg = fg; }
-      if (bg !== lastBg) { buf += `\x1b[48;2;${b[0]};${b[1]};${b[2]}m`; lastBg = bg; }
-      buf += '▀';
+      if (fg !== lastFg) { buf += `\x1b[38;2;${c[0]};${c[1]};${c[2]}m`; lastFg = fg; }
+      if (bg !== lastBg) { buf += `\x1b[48;2;${c[3]};${c[4]};${c[5]}m`; lastBg = bg; }
+      buf += QUAD[c[6]];
     }
     if (cursorSet) buf += '\x1b[0m';
   }

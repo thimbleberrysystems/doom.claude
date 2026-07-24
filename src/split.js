@@ -67,8 +67,8 @@ function run() {
     log(`tmux new-session failed: ${(r.stderr || '').trim()}`);
     process.exit(1);
   }
-  // Give the game 58% of the width so it renders bigger / more readable.
-  r = tmux(['split-window', '-h', '-l', '58%', '-t', `${session}:0`, shell]);
+  // Give the game 62% of the width so it renders bigger / more readable.
+  r = tmux(['split-window', '-h', '-l', '62%', '-t', `${session}:0`, shell]);
   if (r.status !== 0) {
     tmux(['kill-session', '-t', session]);
     log(`tmux split-window failed: ${(r.stderr || '').trim()}`);
