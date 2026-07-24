@@ -76,9 +76,12 @@ function main() {
         // Remember the current width on the pane itself, so ‹‹ restores it exactly.
         const w = parseInt(tget(['display-message', '-p', '-t', gamePane, '#{pane_width}']), 10) || 0;
         if (w > 6) tx(['set-option', '-p', '-t', gamePane, '@kaboom_lastw', String(w)]);
-        tx(['resize-pane', '-t', gamePane, '-x', '6']);                 // sliver — just enough to grab/click back
+        // The sliver IS the restore button: label its border ‹‹, then hand focus
+        // to Claude. Clicking the strip restores it (handled in src/play.js).
+        tx(['select-pane', '-t', gamePane, '-T', '‹‹']);
+        tx(['resize-pane', '-t', gamePane, '-x', '6']);                 // sliver — just wide enough to click
         tx(['select-pane', '-t', claudePane]);                         // hand focus to Claude
-        tx(['set-option', '-g', 'status-right', statusRight(true)]);    // button flips ›› → ‹‹
+        tx(['set-option', '-g', 'status-right', statusRight(true)]);    // status button also flips ›› → ‹‹
       } else if (range === 'restore') {                                 // ‹‹ bring the game back to its last size
         let w = parseInt(tget(['show-options', '-pqv', '-t', gamePane, '@kaboom_lastw']), 10);
         if (!w || w < 6) {                                              // no memory → sensible default (~62%)
@@ -86,7 +89,7 @@ function main() {
           w = Math.round(win * 0.62);
         }
         tx(['resize-pane', '-t', gamePane, '-x', String(w)]);
-        tx(['select-pane', '-t', gamePane]);                           // back into the game
+        tx(['select-pane', '-t', gamePane, '-T', 'GAME ▶']);           // back into the game, drop the ‹‹ label
         tx(['set-option', '-g', 'status-right', statusRight(false)]);   // button flips ‹‹ → ››
       } else if (range === 'quit') {                                    // close the game only…
         tx(['set-option', '-g', 'status-right', CLOSE_CLAUDE_BAR]);     // …and flip the button to "✕ Close Claude"

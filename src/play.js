@@ -36,7 +36,8 @@ const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`
 const SELF_PANE = process.env.TMUX_PANE || ''; // this game's tmux pane
 // After the game closes, the status bar shows just this — a ✕ that ends the
 // whole split. Shared with split/click via src/bar.js.
-const { CLOSE_CLAUDE_BAR } = require('./bar');
+const { CLOSE_CLAUDE_BAR, statusRight } = require('./bar');
+const MIN_COLS = 6; // width of the minimized "sliver" (kept in sync with bin click)
 let focused = false;       // game pane focused? starts false (split focuses Claude first)
 let paused = !!KID;        // derived: coupled & not focused → frozen
 let frozenDirty = !!KID;
@@ -259,6 +260,28 @@ function updatePaused() {
 function tmuxSelf(args) {
   try { require('child_process').spawnSync('tmux', args, { stdio: 'ignore' }); } catch (_) {}
 }
+function tmuxGet(args) {
+  try { return (require('child_process').spawnSync('tmux', args, { encoding: 'utf8' }).stdout || '').trim(); }
+  catch (_) { return ''; }
+}
+// Our own pane width in columns (0 if unknown).
+function selfWidth() {
+  if (!SELF_PANE) return 0;
+  return parseInt(tmuxGet(['display-message', '-p', '-t', SELF_PANE, '#{pane_width}']), 10) || 0;
+}
+// Restore the game from the minimized sliver back to its last width. Called when
+// you click the sliver (the ‹‹ on its border) — the strip itself is the button.
+function restoreSelf() {
+  let w = parseInt(tmuxGet(['show-options', '-pqv', '-t', SELF_PANE, '@kaboom_lastw']), 10);
+  if (!w || w < MIN_COLS) {
+    const win = parseInt(tmuxGet(['display-message', '-p', '-t', SELF_PANE, '#{window_width}']), 10) || 100;
+    w = Math.round(win * 0.62);
+  }
+  tmuxSelf(['resize-pane', '-t', SELF_PANE, '-x', String(w)]);
+  tmuxSelf(['select-pane', '-t', SELF_PANE, '-T', 'GAME ▶']); // drop the ‹‹ affordance
+  tmuxSelf(['set-option', '-g', 'status-right', statusRight(false)]);
+  prev = null; // force a full redraw at the new size
+}
 // Read Claude's state. When Claude STARTS working, bring the game into focus so
 // you can play the wait. When Claude replies, only show a note — never switch
 // you back.
@@ -350,11 +373,14 @@ async function start() {
       if (s.indexOf('\x1b[O') !== -1) {
         // focus-out: we left the game pane → freeze.
         if (focused) { focused = false; updatePaused(); }
-      } else if (!focused) {
+      } else {
+        // A real focus-in on the minimized sliver = you clicked it to restore.
+        if (s.indexOf('\x1b[I') !== -1 && SELF_PANE && selfWidth() <= MIN_COLS + 2) {
+          restoreSelf();
+        }
         // focus-in, or ANY keystroke = we're active in the game pane → play.
         // (the keystroke fallback keeps it working even without focus events.)
-        focused = true;
-        updatePaused();
+        if (!focused) { focused = true; updatePaused(); }
       }
     }
     if (s === '\x03' || s === 'q' || s === 'Q') { quitGame(); }

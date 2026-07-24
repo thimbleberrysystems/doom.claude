@@ -133,7 +133,7 @@ function run() {
   log('  Click a pane to switch — or the ◀ Claude / Game ▶ buttons in the bottom bar.');
   log('  The game plays only while you\'re in it, and waits when you\'re in Claude.');
   log('  When Claude replies, a "🔔 ready" note shows in the game — switch whenever you like.');
-  log('  Resize: drag the divider or Alt-Shift-←/→ · ›› minimizes the game (‹‹ brings it back) · ⤢ / Alt-z zooms.');
+  log('  Resize: drag the divider or Alt-Shift-←/→ · ›› minimizes the game (click the ‹‹ sliver to bring it back) · ⤢ / Alt-z zooms.');
   log('  In the game: arrows/WASD move · Space fire · E use · Q quit.');
   log('');
 
