@@ -1,11 +1,11 @@
 # kaboom.claude 😈
 
-**Real [Freedoom](https://freedoom.github.io/), playable right next to Claude Code — in one command.** `npx kaboom.claude` opens a split: Claude on one side, the game on the other. The game **plays while Claude is thinking** and **pauses when it replies** — so you frag demons in the dead time and never miss Claude's answer. No install, no WAD hunting, no compiler; the real [doomgeneric](https://github.com/ozkl/doomgeneric) engine runs as WebAssembly with truecolor sextant-block rendering, and the free BSD-licensed game data ships in the package.
+**Real [Freedoom](https://freedoom.github.io/), playable right next to Claude Code — in one command.** `npx kaboom.claude` opens a split: Claude on the left, the game on the right. The game **starts the moment Claude begins working** and **waits when you switch back to read the reply** — so you frag demons in the dead time and never miss Claude's answer. No install, no WAD hunting, no compiler: the real [doomgeneric](https://github.com/ozkl/doomgeneric) engine runs as WebAssembly and the free, BSD-licensed game data ships in the package.
 
 <p align="center">
-  <img src="docs/freedoom-title.png" alt="Freedoom running in the terminal via kaboom.claude" width="600">
+  <img src="docs/kaboom-split.png" alt="kaboom.claude: Claude Code on the left, Freedoom playing in the right tmux pane" width="900">
   <br>
-  <em>Actual output from the bundled engine (Freedoom Phase 1) — rendered in your terminal as truecolor sextant blocks.</em>
+  <em>Claude working on the left; real Freedoom playing in the right pane. The focused pane gets the green outline; the bottom bar carries the controls hint and the switch/zoom/close buttons.</em>
 </p>
 
 ## Play
@@ -16,26 +16,29 @@ From a normal terminal (needs `tmux`; Linux/macOS/WSL):
 npx kaboom.claude
 ```
 
-That's it — Claude and the game open side by side:
+That's it — Claude and the game open side by side, each pane **labelled** (`◀ CLAUDE` / `GAME ▶`) with the **focused pane outlined in bright green** so it's always clear which one has your keys.
 
-```
-┌─ Claude ─────┐┌─ kaboom ─────┐
-│ > working…   ││  ▓█ enemy!    │
-│              ││  HEALTH 80    │
-└──────────────┘└──────────────┘
-```
+- **Auto-starts on Claude's turn.** The moment you send a prompt and Claude starts working, the game **comes into focus and plays** — hands-free. (It focuses the pane; it does *not* zoom you to fullscreen — that stays your call.)
+- **You stay in control.** It plays while you're in its pane and quietly **waits when you switch to Claude**. It **never switches you back** to Claude on its own.
+- **Read Claude at your own pace.** When the reply's ready a **⚠ "Claude replied" note** appears in the game (no interruption). Go read it whenever *you* like — `Alt-←` or click the left pane.
+- **Switch panes:** **click** a pane, the **◀ Claude** / **Game ▶** buttons in the bottom bar, or **Alt-←/→**. The green outline moves with you.
+- **Zoom:** the **⤢ Zoom** button (or **Alt-z**) blows the game up to fullscreen for real playing; press again to return.
+- **Close the game:** the **✕ Close game** button (or **Q**) closes the **game only — Claude keeps running**. The button then becomes **✕ Close Claude**, which ends the whole split.
 
-Each pane is **labelled** (`◀ CLAUDE` / `GAME ▶`) and the **focused pane gets a bright green outline**, so it's always clear which one has your keys.
+### Controls
 
-- **Auto-starts on Claude's turn:** the moment you send a prompt and Claude starts working, the game **jumps into focus and starts** — play the wait, hands-free.
-- **You stay in control otherwise:** it plays while you're in its pane and quietly **waits when you switch to Claude**. It **never switches you back** to Claude on its own.
-- **Claude at your own pace:** when the reply's ready, a **🔔 "ready" note** appears in the game (no interruption). Go read it whenever *you* like.
-- **Switch:** **click** a pane, or the **◀ Claude** / **Game ▶** buttons in the bottom bar (or **Alt-←/→**). The green outline moves with you.
-- **Zoom:** the **⤢ Zoom** button (or **Alt-z**) blows the game up to fullscreen for real playing; again to return.
-- **Game keys:** `WASD` / arrows move · `Space` or `F` fire · `E` use (doors/switches) · `1`–`7` weapons · `Q` quit.
-- **Buttons:** `◀ Claude` · `Game ▶` · `⤢ Zoom` · `✕ Close game` (closes the game only — **Claude keeps running**; `Q` does the same). Runs on its own tmux socket, so your normal tmux config is untouched; remove the pause hooks with `npx kaboom.claude unhook`.
+| Action | Keys |
+|---|---|
+| Move / turn | `W A S D` or arrow keys |
+| **Fire** | **`Space`** or `F` |
+| **Use** (doors, switches) | **`E`** |
+| Run | hold `Shift` while moving |
+| Weapons | `1`–`7` |
+| Automap | `Tab` |
+| Menu | `Esc` |
+| Quit the game | `Q` |
 
-> **Rendering:** the picture is drawn with **sextant blocks** (2×3 pixels per character cell), and each cell's colours are split into foreground/background by **colour clustering** (not brightness) — that's what keeps the menu's red-on-red text and the scoreboard legible where a plain half-block render turns them to mush. **Frame-diffing** keeps it smooth even over SSH. It's still a terminal, so for the crispest view press **Alt-z** (or the **⤢ Zoom** button) to make the game fullscreen. Sextant glyphs need a modern terminal font (Kitty, Ghostty, WezTerm, foot, recent Windows Terminal / VTE); if yours shows blanks, set `KABOOM_BLOCKS=quad` to fall back to 2×2 quadrant blocks. On terminals with the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) controls use real key press/release for crisp strafe/run; elsewhere they fall back to autorepeat.
+Runs on its **own tmux socket**, so your normal tmux config is untouched. Remove the pause hooks any time with `npx kaboom.claude unhook`.
 
 ### No tmux? Play full-screen
 
@@ -43,23 +46,38 @@ Each pane is **labelled** (`◀ CLAUDE` / `GAME ▶`) and the **focused pane get
 npx kaboom.claude play
 ```
 
-Runs just the game, full-screen, on its own (no Claude split, no tmux).
+Runs just the game, full-screen, on its own — no Claude split, no tmux.
+
+## How it renders (and why it's readable)
+
+Getting Doom legible in a text terminal took two things beyond a naive pixel-to-character map:
+
+- **Sextant blocks — 2×3 sub-pixels per character cell.** Each cell packs a 2-wide × 3-tall grid of pixels using Unicode sextant glyphs (`U+1FB00`…). The extra *vertical* resolution over half/quadrant blocks is what makes the menu, options, and scoreboard text actually readable.
+- **Colour clustering, not brightness.** The six sub-pixels in a cell are split into a foreground and a background colour by **clustering on RGB distance**, not luminance. Doom's menus are red-on-red — near-identical brightness — so a brightness split turned them to mush; clustering on colour keeps the text crisp.
+- **Frame-diffing** redraws only the cells that changed, so it stays smooth even over SSH. **24-bit truecolor**, fit to your terminal.
+
+It's still a terminal, so for the sharpest picture press **Alt-z** (⤢ Zoom) to go fullscreen.
+
+> **Font note:** sextant glyphs need a modern terminal font (Kitty, Ghostty, WezTerm, foot, recent Windows Terminal / VTE — WSL is fine). If yours shows blank boxes, set `KABOOM_BLOCKS=quad` to fall back to 2×2 quadrant blocks.
+>
+> **Keyboard note:** on terminals with the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) controls use real key press/release for crisp strafe/run; elsewhere they fall back to autorepeat.
 
 ## How it works
 
 - The engine is [**doomgeneric**](https://github.com/ozkl/doomgeneric) compiled to **WebAssembly** — it runs under plain Node, no native modules, no system packages. (The WASM build is vendored from [pi-doom](https://github.com/badlogic/pi-doom).)
-- Each 640×400 frame is drawn with Unicode **sextant** glyphs — a 2×3 grid of sub-pixels per character cell (6 pixels/cell). Every cell's six sub-pixels are clustered by colour into a foreground and a background, so fine same-brightness detail (like Doom's red menu text) survives instead of averaging away. 24-bit colour, fit to your terminal.
-- Keyboard comes from raw-mode stdin, mapped to Doom key codes.
+- **Play/pause is driven by Claude's activity.** `npx kaboom.claude` installs two small Claude Code hooks — `UserPromptSubmit` → *busy*, `Stop` → *idle* — that write a per-session flag the game watches. The game plays while Claude is busy and freezes when you return to read. The hooks are guarded on a `KABOOM_ID` env var, so they do nothing in any Claude session that isn't a kaboom split. Remove them with `npx kaboom.claude unhook`.
+- **Switching is beginner-proof.** Everything (mouse, Alt-keys, the status-bar buttons, the green focus outline) runs on a dedicated tmux socket, so none of your own tmux config is touched.
 - The game data is **[Freedoom](https://freedoom.github.io/) Phase 1** (`freedoom1.wad`) — a free, **BSD-3-Clause** IWAD with **no id Software assets**. Bundled, so there's nothing to fetch.
 
 ## Requirements
 
 - **Node.js ≥ 16** (WebAssembly support).
-- A **truecolor terminal**. Linux, macOS, or WSL.
+- **`tmux`** for the split (Linux / macOS / WSL). Full-screen `play` mode doesn't need it.
+- A **truecolor terminal** with a font that has sextant glyphs (see the font note above).
 
 ## Credits & license
 
-- [Freedoom](https://freedoom.github.io/) — the free BSD-licensed game data (`freedoom1.wad`). © 2001–2024 the Freedoom contributors (see `engine/FREEDOOM-CREDITS.txt`).
+- [Freedoom](https://freedoom.github.io/) — the free, BSD-licensed game data (`freedoom1.wad`). © 2001–2024 the Freedoom contributors (see `engine/FREEDOOM-CREDITS.txt`).
 - [doomgeneric](https://github.com/ozkl/doomgeneric) — the portable Doom engine port (from id Software's GPL engine release).
 - [pi-doom](https://github.com/badlogic/pi-doom) — the Node/WASM build this vendors.
 
