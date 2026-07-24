@@ -12,18 +12,18 @@ function log(msg) {
 }
 
 function help() {
-  log(`kaboom.claude — real DOOM in your terminal
+  log(`kaboom.claude — a real terminal FPS (Freedoom on the doomgeneric engine)
 
-  npx kaboom.claude            Play DOOM. Runs the actual engine (doomgeneric,
-                             compiled to WebAssembly) full-screen in your
-                             terminal with truecolor half-block rendering.
+  npx kaboom.claude            Play. Runs the doomgeneric engine (WebAssembly)
+                             full-screen with truecolor half-block rendering,
+                             playing Freedoom (free, BSD-licensed game data).
                              Controls: WASD / arrows move, F or Ctrl fire,
                              Space use, 1-7 weapons, Tab map, Esc menu, Q quit.
                              Needs a real terminal (not Claude's \`!\`).
 
-  npx kaboom.claude split      Claude and DOOM side by side in a tmux split —
-                             Claude left, real Doom right. Play Doom while you
-                             wait on Claude. (Requires tmux.)
+  npx kaboom.claude split      The game and Claude side by side in a tmux split —
+                             Claude left, the game right. Play while you wait
+                             on Claude. (Requires tmux.)
 
   npx kaboom.claude --help     Show this help.`);
 }

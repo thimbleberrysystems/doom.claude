@@ -25,13 +25,13 @@ function log(m) {
 
 function run() {
   if (!have('tmux')) {
-    log('kaboom.claude split needs tmux (Claude + Doom side by side), and it is not installed.');
+    log('kaboom.claude split needs tmux (Claude + the game side by side), and it is not installed.');
     log('');
     log('  • Debian/Ubuntu/WSL:  sudo apt install tmux');
     log('  • Fedora:             sudo dnf install tmux');
     log('  • macOS (Homebrew):   brew install tmux');
     log('');
-    log('Or just play Doom full-screen:  npx kaboom.claude');
+    log('Or just play full-screen:  npx kaboom.claude');
     process.exit(1);
   }
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
@@ -65,7 +65,7 @@ function run() {
   if (!claudeOk) {
     log('Note: `claude` was not found on PATH; start Claude Code in the left pane yourself.');
   }
-  log('Opening Claude ⟷ DOOM split… (Ctrl-b then → to focus Doom and play; Q quits Doom)');
+  log('Opening Claude ⟷ game split… (Ctrl-b then → to focus the game and play; Q quits)');
 
   const inside = !!process.env.TMUX;
   const at = inside
