@@ -17,9 +17,10 @@ function help() {
 
   npx kaboom.claude            Open Claude and the game side by side in a tmux
                                split. The game plays while Claude is thinking
-                               and pauses when it replies.
-                               Switch panes:  click one, or Alt-← / Alt-→.
-                               Zoom the game fullscreen:  Alt-z.
+                               and pauses when it replies. The focused pane has
+                               a green outline. Click a pane to switch (or
+                               Alt-←/→), and use the bottom-bar buttons:
+                               ▶/⏸ Play · ⤢ Zoom · ✕ Game · ✕ Claude.
                                (Requires tmux.)
 
   npx kaboom.claude unhook     Remove the pause-on-idle hooks kaboom added to
@@ -53,6 +54,19 @@ function main() {
       const res = require('./../src/hooks').uninstall();
       log(res.message);
       process.exit(res.ok ? 0 : 1);
+      return;
+    }
+    case 'click': {
+      // Internal: status-bar button dispatch from `split`.
+      // argv: click <range> <socket> <gamePane> <claudePane>
+      const [range, socket, gamePane, claudePane] = process.argv.slice(3);
+      const { spawnSync } = require('child_process');
+      const tx = (a) => spawnSync('tmux', ['-L', socket, ...a], { stdio: 'ignore' });
+      if (range === 'play') tx(['send-keys', '-t', gamePane, 'p']);
+      else if (range === 'zoom') tx(['resize-pane', '-Z', '-t', gamePane]);
+      else if (range === 'quitgame') tx(['send-keys', '-t', gamePane, 'q']);
+      else if (range === 'quitclaude') tx(['kill-pane', '-t', claudePane]);
+      process.exit(0);
       return;
     }
     case '-h':
