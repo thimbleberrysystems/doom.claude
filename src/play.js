@@ -26,17 +26,18 @@ const HOLD_MS = 220;
 let engine = null;
 let kittyEnabled = false;
 
-// Coupling to Claude's activity — active only under `split`, where KABOOM_ID is
-// injected into both panes. The game plays while Claude is thinking ("busy")
-// and pauses when it replies ("idle"). Standalone play (no KABOOM_ID) never pauses.
+// Coupling for `split` (KABOOM_ID injected into both panes). The game plays only
+// while its pane is FOCUSED and freezes when you switch away — so you control
+// pause/play just by moving between panes; nothing is ever forced. Separately,
+// Claude's replies show a gentle "ready" note (no interruption). Standalone play
+// (no KABOOM_ID) always runs and never pauses.
 const KID = process.env.KABOOM_ID || null;
 const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`) : null;
-let paused = !!KID;        // coupled → start paused (Claude is idle at launch)
-let bannerDirty = !!KID;
-let actMtime = -1;
-let actState = 'idle';
-let override = null;       // 'play' | 'pause' | null — manual override (P key);
-                          // cleared on the next real Claude activity change.
+let focused = false;       // game pane focused? starts false (split focuses Claude first)
+let paused = !!KID;        // derived: coupled & not focused → frozen
+let frozenDirty = !!KID;
+let claudeReady = false;   // Claude has replied and you haven't gone back yet
+let claudeMtime = -1;
 
 // ---- terminal setup / guaranteed teardown ----------------------------------
 let tornDown = false;
@@ -44,6 +45,7 @@ function teardown() {
   if (tornDown) return;
   tornDown = true;
   try { if (kittyEnabled) out.write('\x1b[<u'); } catch (_) {} // pop Kitty flags
+  try { out.write('\x1b[?1004l\x1b[?1000l\x1b[?1006l'); } catch (_) {} // disable focus/mouse reporting
   try { if (inp.isTTY) inp.setRawMode(false); } catch (_) {}
   try { out.write('\x1b[0m\x1b[?25h\x1b[?1049l'); } catch (_) {}
   try { inp.pause(); } catch (_) {}
@@ -178,7 +180,6 @@ function handleKitty(s, eng) {
     if (fin === 'u') {
       if (cp === 113 || cp === 81) { teardown(); process.exit(0); }   // q / Q
       if (cp === 99 && ctrl) { teardown(); process.exit(0); }         // Ctrl+C
-      if (KID && cp === 112) { if (ev !== 3) togglePlay(); continue; } // p — manual play/pause
       keys = cpToDoom(cp, shift);
     } else if (fin === 'A') keys = shift ? [K.UP, K.RSHIFT] : [K.UP];
     else if (fin === 'B') keys = shift ? [K.DOWN, K.RSHIFT] : [K.DOWN];
@@ -189,47 +190,31 @@ function handleKitty(s, eng) {
   }
 }
 
-// ---- pause coupling --------------------------------------------------------
-// Effective pause = manual override if set, else follow Claude (idle = paused).
-function computePaused() {
-  const eff = override === 'play' ? false : override === 'pause' ? true : actState !== 'busy';
-  if (eff !== paused) {
-    paused = eff;
-    if (paused) bannerDirty = true;
-    else prev = null; // resumed → force a full redraw
+// ---- focus-based pause + Claude-ready notice -------------------------------
+function updatePaused() {
+  const p = KID ? !focused : false;
+  if (p !== paused) {
+    paused = p;
+    if (paused) frozenDirty = true;
+    else prev = null; // regained focus → force a full redraw of the game
   }
 }
-function pollActivity() {
+// Read Claude's state — only to show/hide the "ready" note; it never pauses.
+function pollClaude() {
   let m = 0;
   try { m = fs.statSync(ACT).mtimeMs; } catch (_) {}
-  if (m !== actMtime) {
+  if (m !== claudeMtime) {
     let s = '';
     try { s = fs.readFileSync(ACT, 'utf8').trim(); } catch (_) {}
-    if ((s === 'busy' || s === 'idle') && s !== actState) {
-      actState = s;
-      override = null; // a real Claude transition returns control to auto mode
-    }
-    actMtime = m;
+    const ready = s === 'idle';
+    if (ready !== claudeReady) { claudeReady = ready; prev = null; }
+    claudeMtime = m;
   }
-  computePaused();
 }
-// P key: play now even when Claude is idle (or pause manually while it thinks).
-function togglePlay() {
-  override = paused ? 'play' : 'pause';
-  computePaused();
-}
-function drawPausedBanner() {
+// Calm prompt shown when the game pane isn't focused (you're over in Claude).
+function drawFrozen() {
   const cols = out.columns || 80, rows = out.rows || 24;
-  const msg = [
-    '⏸   PAUSED  ·  Claude replied — your turn',
-    '',
-    '    P        play now',
-    '    Alt-z    zoom fullscreen',
-    '    Q        quit',
-    '',
-    'Back to Claude:  click it, or Alt-←',
-    '(the game plays on its own while Claude is thinking)',
-  ];
+  const msg = ['⏸  Paused', '', '▶  click here (or Alt-→) to play', '', 'Q to quit'];
   let s = '\x1b[2J';
   const top = Math.max(1, Math.floor((rows - msg.length) / 2));
   for (let i = 0; i < msg.length; i++) {
@@ -237,6 +222,13 @@ function drawPausedBanner() {
     s += `\x1b[${top + i};${col}H\x1b[97m${msg[i]}\x1b[0m`;
   }
   out.write(s);
+}
+// A one-line, non-blocking note over the top row while you're playing.
+function drawClaudeNotice() {
+  const cols = out.columns || 80;
+  const t = ' 🔔  Claude replied — Alt-← (or click the left pane) to switch ';
+  const col = Math.max(1, Math.floor((cols - t.length) / 2) + 1);
+  out.write(`\x1b[1;1H\x1b[K\x1b[1;${col}H\x1b[30;43m${t}\x1b[0m`);
 }
 
 // Ask the terminal whether it supports the Kitty keyboard protocol.
@@ -279,20 +271,31 @@ async function start() {
     out.write('\x1b[>11u'); // disambiguate + report events + all-keys-as-escape-codes
     kittyEnabled = true;
   }
+  if (KID) out.write('\x1b[?1004h'); // focus in/out events (drive focus-based pause)
 
   inp.on('data', (b) => {
     const s = b.toString('binary');
-    if (kittyEnabled) return handleKitty(s, engine);
+    if (KID) {
+      if (s.indexOf('\x1b[O') !== -1) {
+        // focus-out: we left the game pane → freeze.
+        if (focused) { focused = false; updatePaused(); }
+      } else if (!focused) {
+        // focus-in, or ANY keystroke = we're active in the game pane → play.
+        // (the keystroke fallback keeps it working even without focus events.)
+        focused = true;
+        updatePaused();
+      }
+    }
     if (s === '\x03' || s === 'q' || s === 'Q') { teardown(); process.exit(0); }
-    if (KID && (s === 'p' || s === 'P')) { togglePlay(); return; } // manual play/pause
+    if (kittyEnabled) return handleKitty(s, engine);
     for (const key of mapKeyToDoom(s)) press(key);
   });
 
   const delay = Math.round(1000 / FPS);
   const loop = () => {
-    if (KID) pollActivity();
-    if (!paused) { engine.tick(); renderFrame(engine); }
-    else if (bannerDirty) { drawPausedBanner(); bannerDirty = false; }
+    if (KID) pollClaude();
+    if (!paused) { engine.tick(); renderFrame(engine); if (claudeReady) drawClaudeNotice(); }
+    else if (frozenDirty) { drawFrozen(); frozenDirty = false; }
     setTimeout(loop, delay);
   };
   loop();

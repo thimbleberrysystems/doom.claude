@@ -85,7 +85,10 @@ function run() {
 
   // ---- make it easy + obvious (all isolated to our socket) ----
   // Click a pane to focus it, or Alt-arrows; Alt-z zooms the focused pane.
+  // focus-events lets the game know when its pane is (un)focused → it plays only
+  // while focused and freezes when you switch to Claude (never forced).
   tmux(['set-option', '-g', 'mouse', 'on']);
+  tmux(['set-option', '-g', 'focus-events', 'on']);
   tmux(['bind-key', '-n', 'M-Left', 'select-pane', '-L']);
   tmux(['bind-key', '-n', 'M-Right', 'select-pane', '-R']);
   tmux(['bind-key', '-n', 'M-z', 'resize-pane', '-Z']);
@@ -98,19 +101,19 @@ function run() {
   tmux(['set-option', '-g', 'pane-active-border-style', 'fg=colour46,bold']);
   tmux(['set-option', '-g', 'pane-border-style', 'fg=colour238']);
   tmux(['set-option', '-g', 'automatic-rename', 'off']);
-  tmux(['select-pane', '-t', `${session}:0.0`, '-T', '◀ CLAUDE  (click here to type)']);
-  tmux(['select-pane', '-t', `${session}:0.1`, '-T', 'GAME ▶  (click here to play)']);
+  tmux(['select-pane', '-t', `${session}:0.0`, '-T', '◀ CLAUDE']);
+  tmux(['select-pane', '-t', `${session}:0.1`, '-T', 'GAME ▶']);
   tmux(['select-pane', '-t', `${session}:0.0`]);
 
-  // Clickable buttons in the bottom status bar + a keyboard-switch hint. Clicks
-  // are dispatched back through this CLI (`click <range>`) so the logic is JS.
+  // Clickable buttons in the bottom status bar. Clicks are dispatched back
+  // through this CLI (`click <range>`) so the logic is JS, not tmux quoting.
   const btn = (name, label, bg) => `#[fg=colour231,bg=${bg}]#[range=user|${name}] ${label} #[norange]#[default] `;
-  tmux(['set-option', '-g', 'status-left', ' click a pane, or Alt-←/→, to switch   ']);
-  tmux(['set-option', '-g', 'status-left-length', '55']);
+  tmux(['set-option', '-g', 'status-left', ' kaboom.claude   ']);
+  tmux(['set-option', '-g', 'status-left-length', '20']);
   tmux(['set-option', '-g', 'status-right',
-    btn('play', '▶/⏸ Play', 'colour28') + btn('zoom', '⤢ Zoom', 'colour24') +
-    btn('quitgame', '✕ Game', 'colour88') + btn('quitclaude', '✕ Claude', 'colour88')]);
-  tmux(['set-option', '-g', 'status-right-length', '120']);
+    btn('claude', '◀ Claude', 'colour24') + btn('game', 'Game ▶', 'colour28') +
+    btn('zoom', '⤢ Zoom', 'colour238') + btn('quit', '✕ Quit', 'colour88')]);
+  tmux(['set-option', '-g', 'status-right-length', '90']);
   tmux(['set-option', '-g', 'status-style', 'bg=colour235,fg=colour252']);
   tmux(['bind-key', '-n', 'MouseDown1Status', 'run-shell', '-b',
     `node ${q(GAME)} click "#{mouse_status_range}" ${SOCKET} ${gamePane} ${claudePane}`]);
@@ -119,11 +122,12 @@ function run() {
     log('Note: `claude` was not found on PATH; start Claude Code in the left pane yourself.');
   }
   log('');
-  log('  Claude on the LEFT · the game on the RIGHT · the FOCUSED pane has a green outline.');
-  log('  Switch:   click a pane, or Alt-← / Alt-→');
-  log('  Buttons:  the bottom bar has  ▶/⏸ Play · ⤢ Zoom · ✕ Game · ✕ Claude');
-  log('  In game:  arrows/WASD move · F fire · P play/pause · Q quit');
-  log('  Auto:     plays while Claude is thinking, pauses when it replies.');
+  log('  Claude ◀ left    ·    game ▶ right    ·    focused pane = green outline');
+  log('  ───────────────────────────────────────────────────────────────────');
+  log('  Click a pane to switch — or the ◀ Claude / Game ▶ buttons in the bottom bar.');
+  log('  The game plays only while you\'re in it, and waits when you\'re in Claude.');
+  log('  When Claude replies, a "🔔 ready" note shows in the game — switch whenever you like.');
+  log('  In the game: arrows/WASD move · F fire · Q quit. Zoom fullscreen: Alt-z or ⤢ button.');
   log('');
 
   if (process.env.TMUX) {

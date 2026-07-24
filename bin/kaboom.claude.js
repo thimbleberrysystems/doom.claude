@@ -15,13 +15,13 @@ function log(msg) {
 function help() {
   log(`kaboom.claude — real Freedoom next to Claude Code
 
-  npx kaboom.claude            Open Claude and the game side by side in a tmux
-                               split. The game plays while Claude is thinking
-                               and pauses when it replies. The focused pane has
-                               a green outline. Click a pane to switch (or
-                               Alt-←/→), and use the bottom-bar buttons:
-                               ▶/⏸ Play · ⤢ Zoom · ✕ Game · ✕ Claude.
-                               (Requires tmux.)
+  npx kaboom.claude            Open Claude and the game side by side. The game
+                               plays while you're in its pane and waits while
+                               you're in Claude; when Claude replies a 🔔 note
+                               shows so you can switch at your own pace. The
+                               focused pane has a green outline. Switch: click a
+                               pane, or the ◀ Claude / Game ▶ / ⤢ Zoom / ✕ Quit
+                               buttons in the bottom bar. (Requires tmux.)
 
   npx kaboom.claude unhook     Remove the pause-on-idle hooks kaboom added to
                                ~/.claude/settings.json.
@@ -62,10 +62,10 @@ function main() {
       const [range, socket, gamePane, claudePane] = process.argv.slice(3);
       const { spawnSync } = require('child_process');
       const tx = (a) => spawnSync('tmux', ['-L', socket, ...a], { stdio: 'ignore' });
-      if (range === 'play') tx(['send-keys', '-t', gamePane, 'p']);
+      if (range === 'claude') tx(['select-pane', '-t', claudePane]);    // switch to Claude
+      else if (range === 'game') tx(['select-pane', '-t', gamePane]);   // switch to the game
       else if (range === 'zoom') tx(['resize-pane', '-Z', '-t', gamePane]);
-      else if (range === 'quitgame') tx(['send-keys', '-t', gamePane, 'q']);
-      else if (range === 'quitclaude') tx(['kill-pane', '-t', claudePane]);
+      else if (range === 'quit') tx(['kill-window', '-t', gamePane]);   // close the split
       process.exit(0);
       return;
     }
