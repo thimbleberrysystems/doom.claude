@@ -69,7 +69,9 @@ function launch() {
 
   // Unique id for this launch, shared by both panes and the hooks.
   const id = newSessionId();
-  const session = `snake.claude-${id}`;
+  // tmux treats "." and ":" as target separators, so the session name must
+  // avoid them (users never see this name — it's internal plumbing).
+  const session = `snake-claude-${id}`;
 
   // Prepare the per-session signal file (starts paused — Claude is idle at
   // launch) and sweep away any files left by earlier crashed sessions.
