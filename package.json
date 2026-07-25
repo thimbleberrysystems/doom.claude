@@ -1,6 +1,6 @@
 {
   "name": "kaboom.claude",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Real DOOM in your terminal — the actual doomgeneric engine (WASM) with truecolor half-block rendering. Play full-screen, or side by side with Claude Code in a tmux split.",
   "author": "thimbleberrysystems <thimbleberrysystems@gmail.com>",
   "bin": {
