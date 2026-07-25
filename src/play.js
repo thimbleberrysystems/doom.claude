@@ -33,6 +33,8 @@ let sixelCellW = 10, sixelCellH = 20; // character-cell pixel size (queried; fal
 let frameToSixel = null;              // lazy-loaded from ./sixel when Sixel is used
 let sixelPrevSig = -1;                // last drawn frame signature (for idle frame-skip)
 let sixelCols = 0, sixelRows = 0;     // last pane size (detect resize → clear)
+let sixelStartRow = 0;                // top row of the game image (rows above = info panel)
+let panelTick = 0;                    // throttles the info-panel redraw
 
 // Coupling for `split` (KABOOM_ID injected into both panes). The game plays only
 // while its pane is FOCUSED and freezes when you switch away — so you control
@@ -44,6 +46,7 @@ const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`
 // "Don't interrupt" flag, written by the status-bar button (bin click) and read
 // here. A plain file (like ACT) — no cross-process tmux read to go wrong.
 const KEEP = KID ? path.join(os.homedir(), '.claude', 'kaboom', `keep.${KID}`) : null;
+const KDIR = path.join(os.homedir(), '.claude', 'kaboom'); // per-session info files (hooks + statusline)
 const SELF_PANE = process.env.TMUX_PANE || ''; // this game's tmux pane
 // After the game closes, the status bar shows just this — a ✕ that ends the
 // whole split. Shared with split/click via src/bar.js.
@@ -240,8 +243,93 @@ function renderFrameSixel(eng) {
   const padCols = Math.max(0, Math.floor((cols - Math.ceil(outW / sixelCellW)) / 2));
   const imgRows = Math.ceil(outH / sixelCellH);
   const startRow = Math.max(1, rows - imgRows);
+  sixelStartRow = startRow; // rows 1..startRow-1 are the info-panel area
   const home = `\x1b[${startRow};${padCols + 1}H`;
   out.write('\x1b[?2026h' + home + frameToSixel(fb, sw, sh, outW, outH) + '\x1b[?2026l');
+}
+
+// ---- Claude info panel (drawn in the empty top rows of the game column) -----
+const PC = { // palette (256-colour)
+  label: '\x1b[38;5;244m', val: '\x1b[38;5;253m', cyan: '\x1b[38;5;44m',
+  green: '\x1b[38;5;42m', yellow: '\x1b[38;5;222m', red: '\x1b[38;5;203m', reset: '\x1b[0m',
+};
+const SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+const NEEDS_YOU = ['permission_prompt', 'idle_prompt', 'agent_needs_input'];
+
+function fmtTokens(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1000) { const k = n / 1000; return (k >= 100 ? Math.round(k) : k.toFixed(1)) + 'k'; }
+  return String(n | 0);
+}
+function fmtElapsed(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+function ctxBar(pct, width) {
+  const fill = Math.max(0, Math.min(width, Math.round((pct / 100) * width)));
+  const col = pct >= 85 ? PC.red : pct >= 60 ? PC.yellow : PC.green;
+  return col + '▓'.repeat(fill) + '\x1b[38;5;238m' + '░'.repeat(width - fill) + PC.reset;
+}
+function readInfo() {
+  const r = (name) => { try { return fs.readFileSync(path.join(KDIR, `${name}.${KID}`), 'utf8').trim(); } catch (_) { return ''; } };
+  let info = {};
+  try { info = JSON.parse(fs.readFileSync(path.join(KDIR, `info.${KID}.json`), 'utf8')); } catch (_) {}
+  return {
+    activity: r('activity'), start: parseInt(r('start'), 10) || 0, turns: parseInt(r('turns'), 10) || 0,
+    agents: parseInt(r('agents'), 10) || 0, tool: r('tool'), bell: r('bell'), info,
+  };
+}
+function buildPanelLines(d, cols) {
+  const info = d.info || {}, now = Date.now(), L = [];
+  const busy = d.activity === 'busy', needsYou = NEEDS_YOU.indexOf(d.bell) !== -1;
+  // State line carries the "bell": working / needs-you / replied / idle.
+  let state;
+  if (busy) {
+    const sp = SPIN[Math.floor(now / 100) % SPIN.length];
+    const el = d.start ? '  ' + PC.label + fmtElapsed(Math.max(0, Math.floor(now / 1000) - d.start)) + PC.reset : '';
+    state = `${PC.green}${sp} Working${PC.reset}${el}`;
+  } else if (needsYou) state = `${PC.yellow}🔔 Claude needs you${PC.reset}`;
+  else if (claudeReady) state = `${PC.yellow}🔔 Claude replied${PC.reset}`;
+  else state = `${PC.label}✓ idle${PC.reset}`;
+  L.push(' ' + state);
+  if (info.model) L.push(' ' + PC.cyan + info.model + PC.reset);
+  L.push('');
+  if (info.ctxSize) {
+    const w = Math.max(6, Math.min(12, cols - 14));
+    L.push(' ' + PC.label + 'ctx ' + PC.reset + ctxBar(info.ctxPct || 0, w) + ' ' + PC.val + (info.ctxPct || 0) + '%' + PC.reset);
+  }
+  if (info.inTok) L.push(' ' + PC.label + 'tok ' + PC.reset + PC.val + fmtTokens(info.inTok) + PC.reset);
+  if (d.agents > 0) L.push(' ' + PC.label + 'agents ' + PC.reset + PC.val + d.agents + PC.reset);
+  if (busy && d.tool) L.push(' ' + PC.label + 'tool ' + PC.reset + PC.val + d.tool + PC.reset);
+  if (info.costUsd) L.push(' ' + PC.label + 'cost ' + PC.reset + PC.val + '$' + info.costUsd.toFixed(2) + PC.reset);
+  if (d.turns) L.push(' ' + PC.label + 'turn ' + PC.reset + PC.val + d.turns + PC.reset);
+  return L;
+}
+function renderInfoPanel() {
+  if (!KID || !useSixel) return;
+  const maxRows = sixelStartRow - 1;
+  if (maxRows < 3) return; // not enough room above the game
+  const cols = out.columns || 80;
+  const lines = buildPanelLines(readInfo(), cols);
+  let buf = '';
+  for (let i = 0; i < maxRows; i++) {
+    buf += `\x1b[${i + 1};1H\x1b[K`;      // clear the panel row
+    if (i < lines.length) buf += lines[i]; // then draw its content
+  }
+  out.write(buf);
+}
+function maybePanel() {
+  if (useSixel && KID && (panelTick++ % 6 === 0)) renderInfoPanel(); // ~3x/sec at 20fps
+}
+// Paused screen for Sixel mode: clear only the game area (keep the info panel).
+function drawFrozenSixel() {
+  const rows = out.rows || 24, cols = out.columns || 80;
+  const from = Math.max(1, sixelStartRow);
+  const msg = '⏸  Paused — click here (or Alt-→) to play';
+  const r = Math.floor((from + rows) / 2);
+  const c = Math.max(1, Math.floor((cols - msg.length) / 2) + 1);
+  out.write(`\x1b[${from};1H\x1b[0J\x1b[${r};${c}H\x1b[38;5;250m${msg}\x1b[0m`);
+  sixelPrevSig = -1; // force a full game redraw on resume
 }
 
 // ---- input: legacy (press-only + hold emulation) ---------------------------
@@ -524,15 +612,16 @@ async function start() {
     if (!paused) {
       if (wasPaused) { sixelPrevSig = -1; prev = null; wasPaused = false; } // force a full redraw on resume
       engine.tick();
-      if (useSixel) renderFrameSixel(engine); else renderFrame(engine);
-      if (claudeReady) drawClaudeNotice();
+      if (useSixel) { renderFrameSixel(engine); maybePanel(); }
+      else { renderFrame(engine); if (claudeReady) drawClaudeNotice(); }
     } else {
       wasPaused = true;
-      if (frozenDirty) { drawFrozen(); frozenDirty = false; }
+      if (frozenDirty) { if (useSixel) drawFrozenSixel(); else drawFrozen(); frozenDirty = false; }
+      maybePanel(); // keep Claude's info live even while the game is paused
     }
     setTimeout(loop, delay);
   };
   loop();
 }
 
-module.exports = { start, frameToString, renderFrame, handleKitty, cpToDoom };
+module.exports = { start, frameToString, renderFrame, handleKitty, cpToDoom, buildPanelLines };

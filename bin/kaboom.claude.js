@@ -26,8 +26,9 @@ function help() {
                                (✕ and Q close the game only; Claude stays).
                                (Requires tmux.)
 
-  npx kaboom.claude unhook     Remove the pause-on-idle hooks kaboom added to
-                               ~/.claude/settings.json.
+  npx kaboom.claude unhook     Remove the hooks kaboom added to
+                               ~/.claude/settings.json and restore your original
+                               status line.
 
   npx kaboom.claude --help     Show this help.
 
