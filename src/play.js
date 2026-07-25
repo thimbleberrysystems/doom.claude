@@ -26,6 +26,14 @@ const HOLD_MS = 220;
 let engine = null;
 let kittyEnabled = false;
 
+// Sixel (crisp pixel) rendering — engaged only when the terminal advertises it.
+const SIXEL_FPS = 20;                 // clarity over motion (blocks run at FPS=35)
+let useSixel = false;
+let sixelCellW = 10, sixelCellH = 20; // character-cell pixel size (queried; fallback guess)
+let frameToSixel = null;              // lazy-loaded from ./sixel when Sixel is used
+let sixelPrevSig = -1;                // last drawn frame signature (for idle frame-skip)
+let sixelCols = 0, sixelRows = 0;     // last pane size (detect resize → clear)
+
 // Coupling for `split` (KABOOM_ID injected into both panes). The game plays only
 // while its pane is FOCUSED and freezes when you switch away — so you control
 // pause/play just by moving between panes; nothing is ever forced. Separately,
@@ -185,6 +193,49 @@ function renderFrame(eng) {
   }
   prev = cur;
   if (buf) out.write(buf);
+}
+
+// Cheap sampled signature of a frame + its output geometry — lets us skip
+// re-encoding/emitting an identical frame (e.g. a static menu).
+function sixelSig(fb, outW, outH) {
+  let h = ((outW << 16) ^ outH) | 0;
+  for (let i = 0; i < fb.length; i += 512) h = (Math.imul(h, 33) + fb[i]) | 0;
+  return h;
+}
+
+// Sixel renderer: draw the framebuffer as real pixels, scaled to fill the pane
+// (preserving Doom's 4:3 display aspect), wrapped in synchronized output so it
+// never tears. Falls back to nothing if the frame isn't ready.
+function renderFrameSixel(eng) {
+  const fb = eng.frame();
+  if (!fb) return;
+  const sw = eng.width, sh = eng.height;
+  const cols = out.columns || 80, rows = out.rows || 24;
+  if (cols !== sixelCols || rows !== sixelRows) { // pane resized → clear stale pixels
+    out.write('\x1b[2J'); sixelCols = cols; sixelRows = rows; sixelPrevSig = -1;
+  }
+  // Fit a 4:3 image inside the pane's pixel box, leaving the last row free so
+  // the image can't spill past the pane and scroll it.
+  const boxW = cols * sixelCellW, boxH = (rows - 1) * sixelCellH;
+  const ASPECT = 4 / 3;
+  let outW, outH;
+  if (boxW / boxH > ASPECT) { outH = boxH; outW = Math.round(boxH * ASPECT); }
+  else { outW = boxW; outH = Math.round(boxW / ASPECT); }
+  // Never upscale past native 640x480 — extra pixels cost encode time with no
+  // detail gain (source is 640x400). Downscale to fit smaller panes.
+  const cap = Math.min(1, 640 / outW, 480 / outH);
+  outW = Math.max(2, Math.round(outW * cap));
+  outH = Math.max(2, Math.round(outH * cap));
+
+  const sig = sixelSig(fb, outW, outH);
+  if (sig === sixelPrevSig) return; // unchanged → nothing to redraw
+  sixelPrevSig = sig;
+
+  // Center horizontally; anchor at the top. Synchronized output (DEC 2026)
+  // brackets the write so the terminal swaps the whole frame at once.
+  const padCols = Math.max(0, Math.floor((cols - Math.ceil(outW / sixelCellW)) / 2));
+  const home = `\x1b[1;${padCols + 1}H`;
+  out.write('\x1b[?2026h' + home + frameToSixel(fb, sw, sh, outW, outH) + '\x1b[?2026l');
 }
 
 // ---- input: legacy (press-only + hold emulation) ---------------------------
@@ -354,6 +405,36 @@ function detectKitty() {
   });
 }
 
+// Ask the terminal (through tmux, if present) whether it supports SIXEL, and for
+// its character-cell pixel size so we can scale the frame to fill the pane.
+// Sixel is reported as attribute "4" in the Primary Device Attributes reply
+// (\x1b[?...c). Cell size comes from \x1b[16t → \x1b[6;<h>;<w>t. KABOOM_SIXEL
+// forces the decision (1=on, 0=off) for debugging. Returns {supported,cellW,cellH}.
+function detectSixel() {
+  return new Promise((resolve) => {
+    const forced = process.env.KABOOM_SIXEL;
+    if (forced === '0') return resolve({ supported: false, cellW: 0, cellH: 0 });
+    try { inp.setRawMode(true); } catch (_) {}
+    inp.resume();
+    let acc = '', cellW = 0, cellH = 0, sixel = false;
+    const parse = () => {
+      const cs = acc.match(/\x1b\[6;(\d+);(\d+)t/);
+      if (cs) { cellH = parseInt(cs[1], 10); cellW = parseInt(cs[2], 10); }
+      const da = acc.match(/\x1b\[\?([0-9;]+)c/); // Primary Device Attributes
+      if (da) { sixel = da[1].split(';').includes('4'); finish(); } // DA is sent last → we're done
+    };
+    const finish = () => {
+      clearTimeout(timer);
+      inp.removeListener('data', onData);
+      resolve({ supported: forced === '1' ? true : sixel, cellW, cellH });
+    };
+    const onData = (d) => { acc += d.toString('binary'); parse(); };
+    inp.on('data', onData);
+    out.write('\x1b[16t\x1b[c'); // cell-size first, then DA (whose reply ends the probe)
+    const timer = setTimeout(finish, 300);
+  });
+}
+
 // ---- main -------------------------------------------------------------------
 async function start() {
   if (!inp.isTTY || !out.isTTY) {
@@ -367,6 +448,19 @@ async function start() {
   out.write('\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H\x1b[97mLoading…\x1b[0m');
 
   const kitty = await detectKitty();
+  // Sixel gives crisp, readable pixels. Engage it unless KABOOM_BLOCKS forces the
+  // block renderer, and only if the ./sixel module loads cleanly.
+  if (!process.env.KABOOM_BLOCKS) {
+    const sx = await detectSixel();
+    if (sx.supported) {
+      try {
+        ({ frameToSixel } = require('./sixel'));
+        useSixel = true;
+        if (sx.cellW) sixelCellW = sx.cellW;
+        if (sx.cellH) sixelCellH = sx.cellH;
+      } catch (_) { useSixel = false; } // package missing/broken → keep blocks
+    }
+  }
 
   engine = new DoomEngine();
   await engine.init();
@@ -400,11 +494,19 @@ async function start() {
     for (const key of mapKeyToDoom(s)) press(key);
   });
 
-  const delay = Math.round(1000 / FPS);
+  const delay = Math.round(1000 / (useSixel ? SIXEL_FPS : FPS));
+  let wasPaused = true;
   const loop = () => {
     if (KID) pollClaude();
-    if (!paused) { engine.tick(); renderFrame(engine); if (claudeReady) drawClaudeNotice(); }
-    else if (frozenDirty) { drawFrozen(); frozenDirty = false; }
+    if (!paused) {
+      if (wasPaused) { sixelPrevSig = -1; prev = null; wasPaused = false; } // force a full redraw on resume
+      engine.tick();
+      if (useSixel) renderFrameSixel(engine); else renderFrame(engine);
+      if (claudeReady) drawClaudeNotice();
+    } else {
+      wasPaused = true;
+      if (frozenDirty) { drawFrozen(); frozenDirty = false; }
+    }
     setTimeout(loop, delay);
   };
   loop();

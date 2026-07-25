@@ -52,15 +52,14 @@ Runs just the game, full-screen, on its own — no Claude split, no tmux.
 
 ## How it renders (and why it's readable)
 
-Getting Doom legible in a text terminal took two things beyond a naive pixel-to-character map:
+kaboom picks the best renderer your terminal supports, automatically:
 
-- **Sextant blocks — 2×3 sub-pixels per character cell.** Each cell packs a 2-wide × 3-tall grid of pixels using Unicode sextant glyphs (`U+1FB00`…). The extra *vertical* resolution over half/quadrant blocks is what makes the menu, options, and scoreboard text actually readable.
-- **Colour clustering, not brightness.** The six sub-pixels in a cell are split into a foreground and a background colour by **clustering on RGB distance**, not luminance. Doom's menus are red-on-red — near-identical brightness — so a brightness split turned them to mush; clustering on colour keeps the text crisp.
-- **Frame-diffing** redraws only the cells that changed, so it stays smooth even over SSH. **24-bit truecolor**, fit to your terminal.
+- **Sixel (crisp, the good one).** When the terminal advertises **Sixel**, kaboom draws the framebuffer as **real pixels** — so menus, options and scores are pixel-sharp, exactly like the "very clear" terminal-Doom projects. Doom only uses ≤256 colours per frame, so each frame is encoded losslessly (no quantization) and drawn inside synchronized-output brackets to avoid tearing. This is auto-detected via the terminal's device-attributes reply; through tmux it needs a **tmux built with `--enable-sixel`** (tmux ≥3.4) and a Sixel-capable host terminal (**Windows Terminal ≥1.22**, WezTerm, xterm, foot, mlterm, …).
+- **Block fallback (everywhere else).** Without Sixel, kaboom falls back to **sextant blocks** — a 2×3 grid of sub-pixels per character cell (Unicode `U+1FB00`…), with each cell's foreground/background split by **colour clustering** (not brightness), so red-on-red menu text still separates instead of turning to mush. Frame-diffing redraws only changed cells. Readable, if not pixel-perfect.
 
-It's still a terminal, so for the sharpest picture press **Alt-z** (⤢ Zoom) to go fullscreen.
+Either way it's **24-bit truecolor**, fit to your terminal; press **Alt-z** (⤢ Zoom) for the sharpest picture.
 
-> **Font note:** sextant glyphs need a modern terminal font (Kitty, Ghostty, WezTerm, foot, recent Windows Terminal / VTE — WSL is fine). If yours shows blank boxes, set `KABOOM_BLOCKS=quad` to fall back to 2×2 quadrant blocks.
+> **Knobs:** `KABOOM_SIXEL=0` forces the block renderer even where Sixel is available (and `=1` forces Sixel on); `KABOOM_BLOCKS=quad` uses 2×2 quadrant blocks (for fonts without sextant glyphs).
 >
 > **Keyboard note:** on terminals with the **Kitty keyboard protocol** (Kitty, Ghostty, WezTerm) controls use real key press/release for crisp strafe/run; elsewhere they fall back to autorepeat.
 
@@ -74,8 +73,8 @@ It's still a terminal, so for the sharpest picture press **Alt-z** (⤢ Zoom) to
 ## Requirements
 
 - **Node.js ≥ 16** (WebAssembly support).
-- **`tmux`** for the split (Linux / macOS / WSL). Full-screen `play` mode doesn't need it.
-- A **truecolor terminal** with a font that has sextant glyphs (see the font note above).
+- **`tmux`** for the split (Linux / macOS / WSL). Full-screen `play` mode doesn't need it. For the crisp **Sixel** picture in the split, tmux must be built with `--enable-sixel` (tmux ≥3.4) — otherwise it falls back to blocks.
+- A **truecolor terminal**. For pixel-sharp text, a **Sixel-capable** one (Windows Terminal ≥1.22, WezTerm, xterm, foot, mlterm…); otherwise any terminal with a sextant-capable font works via the block fallback.
 
 ## Credits & license
 

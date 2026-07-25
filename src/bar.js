@@ -13,7 +13,7 @@
 const btn = (name, label, bg) =>
   `#[fg=colour231,bg=${bg}]#[range=user|${name}] ${label} #[norange]#[default] `;
 
-const HINT = `#[fg=colour246]Space to shoot · E to use#[default]   `;
+const HINT = `#[fg=colour246]WASD/↔ move · Shift run · Space fire · E use · 1-7 weapons · Tab map · Esc menu · Q quit#[default]   `;
 
 // Normal split bar. opts: { minimized, keepPlaying }.
 function statusRight(opts) {

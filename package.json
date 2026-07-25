@@ -38,5 +38,8 @@
     "tmux",
     "cli"
   ],
-  "license": "GPL-2.0-or-later"
+  "license": "GPL-2.0-or-later",
+  "dependencies": {
+    "sixel": "^0.16.0"
+  }
 }

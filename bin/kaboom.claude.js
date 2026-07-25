@@ -31,8 +31,12 @@ function help() {
 
   npx kaboom.claude --help     Show this help.
 
-Controls (in the game): WASD / arrows move · Space or F fire · E use ·
-1-7 weapons · Tab map · Esc menu · P play/pause · Q quit.
+Controls (in the game): WASD / arrows move · Shift run · Space or F fire ·
+E use · 1-7 weapons · Tab map · Esc menu · Q quit.
+
+Rendering: auto-detects SIXEL for pixel-sharp text (needs a Sixel terminal,
+and in the split a tmux built with --enable-sixel); otherwise falls back to
+Unicode blocks. KABOOM_SIXEL=0 forces blocks; KABOOM_BLOCKS=quad uses 2x2.
 
 No tmux?  npx kaboom.claude play   runs the game full-screen on its own.`);
 }

@@ -122,7 +122,7 @@ function run() {
   // The game pane is on the right, so the controls hint + buttons live in
   // status-right (right-aligned) to sit under the game.
   tmux(['set-option', '-g', 'status-right', statusRight({ minimized: false, keepPlaying: false })]);
-  tmux(['set-option', '-g', 'status-right-length', '175']);
+  tmux(['set-option', '-g', 'status-right-length', '220']);
   tmux(['set-option', '-g', 'status-style', 'bg=colour235,fg=colour252']);
   tmux(['bind-key', '-n', 'MouseDown1Status', 'run-shell', '-b',
     `node ${q(GAME)} click "#{mouse_status_range}" ${SOCKET} ${gamePane} ${claudePane}`]);
