@@ -435,6 +435,22 @@ function detectSixel() {
   });
 }
 
+// With Sixel the picture is fixed at ~640x480 and centered, so a wide game pane
+// just adds black margins. Shrink our own pane to exactly wrap the image and
+// hand the reclaimed width to Claude. Only shrinks (never steals from Claude on
+// a small terminal), and only in a split (SELF_PANE), only for Sixel.
+function fitGamePane() {
+  if (!useSixel || !SELF_PANE) return;
+  const cols = out.columns || 80, rows = out.rows || 24;
+  const gameH = Math.min(480, Math.max(2, (rows - 1) * sixelCellH));
+  const gameW = Math.min(640, Math.round(gameH * 4 / 3));
+  const needed = Math.ceil(gameW / sixelCellW) + 2; // +2 cols so the image never clips
+  if (needed < cols) {
+    tmuxSelf(['resize-pane', '-t', SELF_PANE, '-x', String(needed)]);
+    sixelCols = 0; // force a clear+redraw at the new width
+  }
+}
+
 // ---- main -------------------------------------------------------------------
 async function start() {
   if (!inp.isTTY || !out.isTTY) {
@@ -458,6 +474,7 @@ async function start() {
         useSixel = true;
         if (sx.cellW) sixelCellW = sx.cellW;
         if (sx.cellH) sixelCellH = sx.cellH;
+        fitGamePane(); // right-size our pane to the image; give the rest to Claude
       } catch (_) { useSixel = false; } // package missing/broken → keep blocks
     }
   }
