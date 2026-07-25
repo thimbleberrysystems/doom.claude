@@ -3,9 +3,9 @@
 **Real [Freedoom](https://freedoom.github.io/), playable right next to Claude Code — in one command.** `npx kaboom.claude` opens a split: Claude on the left, the game on the right. The game **starts the moment Claude begins working** and **waits when you switch back to read the reply** — so you frag demons in the dead time and never miss Claude's answer. No install, no WAD hunting, no compiler: the real [doomgeneric](https://github.com/ozkl/doomgeneric) engine runs as WebAssembly and the free, BSD-licensed game data ships in the package.
 
 <p align="center">
-  <img src="docs/kaboom-demo.gif" alt="kaboom.claude in action: Claude Code on the left, Freedoom playing in the right tmux pane" width="900">
+  <img src="docs/kaboom-demo.gif" alt="kaboom.claude in action: Claude Code on the left, Freedoom playing bottom-right with a live Claude info panel" width="900">
   <br>
-  <em>Claude working on the left; real Freedoom playing in the right pane. The focused pane gets the green outline; the bottom bar carries the controls hint and the switch / minimize / zoom / close buttons.</em>
+  <em>Claude working on the left; real Freedoom playing bottom-right, with a live Claude info panel above it (state, model, context, tokens, cost, controls). Sixel-crisp pixels; switch / minimize / zoom / close buttons in the bottom bar.</em>
 </p>
 
 ## Play
