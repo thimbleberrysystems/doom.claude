@@ -19,8 +19,8 @@ npx kaboom.claude
 That's it — Claude and the game open side by side, each pane **labelled** (`◀ CLAUDE` / `GAME ▶`) with the **focused pane outlined in bright green** so it's always clear which one has your keys.
 
 - **Auto-starts on Claude's turn.** The moment you send a prompt and Claude starts working, the game **comes into focus and plays** — hands-free. (It focuses the pane; it does *not* zoom you to fullscreen — that stays your call.)
-- **You stay in control.** It plays while you're in its pane and quietly **waits when you switch to Claude**. It **never switches you back** to Claude on its own.
-- **Read Claude at your own pace.** When the reply's ready a **⚠ "Claude replied" note** appears in the game (no interruption). Go read it whenever *you* like — `Alt-←` or click the left pane.
+- **Hands you back when Claude replies.** By default, the moment Claude finishes the game **pauses and focus returns to Claude** so you never miss the answer — play the wait, then you're right back where you need to be.
+- **Don't want the interruption?** Click **Don't interrupt** in the bottom bar. Now when Claude replies the game **keeps playing** and just shows a **🔔 note**; go read the reply whenever *you* like (`Alt-←` or click the left pane). Click it again to go back to auto-return.
 - **Switch panes:** **click** a pane, the **◀ Claude** / **Game ▶** buttons in the bottom bar, or **Alt-←/→**. The green outline moves with you.
 - **Resize the split:** **drag the divider** with your mouse, or nudge it with **Alt-Shift-←/→** (hold to slide it) — give the game more room, or hand it back to Claude, however you like.
 - **Minimize:** the **››** button shrinks the game to a thin sliver at the edge and drops you into Claude. **Click the sliver** (it shows **‹‹**) to bring the game back to its previous size — the strip itself is the restore button, right there at the divider.

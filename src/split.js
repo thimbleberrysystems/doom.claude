@@ -116,10 +116,13 @@ function run() {
   const { statusRight } = require('./bar');
   tmux(['set-option', '-g', 'status-left', ' kaboom.claude   ']);
   tmux(['set-option', '-g', 'status-left-length', '20']);
+  // Toggle state lives in tmux options so the click dispatch + game agree.
+  tmux(['set-option', '-g', '@kaboom_min', '0']);   // not minimized
+  tmux(['set-option', '-g', '@kaboom_keep', '0']);  // "Don't interrupt" off → return to Claude when it replies
   // The game pane is on the right, so the controls hint + buttons live in
   // status-right (right-aligned) to sit under the game.
-  tmux(['set-option', '-g', 'status-right', statusRight(false)]);
-  tmux(['set-option', '-g', 'status-right-length', '150']);
+  tmux(['set-option', '-g', 'status-right', statusRight({ minimized: false, keepPlaying: false })]);
+  tmux(['set-option', '-g', 'status-right-length', '175']);
   tmux(['set-option', '-g', 'status-style', 'bg=colour235,fg=colour252']);
   tmux(['bind-key', '-n', 'MouseDown1Status', 'run-shell', '-b',
     `node ${q(GAME)} click "#{mouse_status_range}" ${SOCKET} ${gamePane} ${claudePane}`]);
@@ -131,8 +134,8 @@ function run() {
   log('  Claude ◀ left    ·    game ▶ right    ·    focused pane = green outline');
   log('  ───────────────────────────────────────────────────────────────────');
   log('  Click a pane to switch — or the ◀ Claude / Game ▶ buttons in the bottom bar.');
-  log('  The game plays only while you\'re in it, and waits when you\'re in Claude.');
-  log('  When Claude replies, a "🔔 ready" note shows in the game — switch whenever you like.');
+  log('  The game plays while Claude works; when Claude replies it pauses and hands you back to Claude.');
+  log('  Want to keep playing instead? Click "Don\'t interrupt" — a 🔔 note shows and you switch when ready.');
   log('  Resize: drag the divider or Alt-Shift-←/→ · ›› minimizes the game (click the ‹‹ sliver to bring it back) · ⤢ / Alt-z zooms.');
   log('  In the game: arrows/WASD move · Space fire · E use · Q quit.');
   log('');

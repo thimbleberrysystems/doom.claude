@@ -17,12 +17,14 @@ function help() {
 
   npx kaboom.claude            Open Claude and the game side by side. When Claude
                                starts working the game auto-starts so you can
-                               play the wait; it never switches you back — when
-                               the reply's ready a 🔔 note shows and you return at
-                               your own pace. The focused pane has a green
+                               play the wait; when the reply's ready it pauses and
+                               hands you back to Claude. Prefer to keep playing?
+                               Click "Don't interrupt" — a 🔔 note shows and you
+                               switch when you like. The focused pane has a green
                                outline. Switch: click a pane, or the ◀ Claude /
-                               Game ▶ / ⤢ Zoom / ✕ Close-game buttons (✕ and Q
-                               close the game only; Claude stays). (Requires tmux.)
+                               Game ▶ / ›› Minimize / ⤢ Zoom / ✕ Close-game buttons
+                               (✕ and Q close the game only; Claude stays).
+                               (Requires tmux.)
 
   npx kaboom.claude unhook     Remove the pause-on-idle hooks kaboom added to
                                ~/.claude/settings.json.
@@ -65,10 +67,17 @@ function main() {
       const { spawnSync } = require('child_process');
       const tx = (a) => spawnSync('tmux', ['-L', socket, ...a], { stdio: 'ignore' });
       const tget = (a) => (spawnSync('tmux', ['-L', socket, ...a], { encoding: 'utf8' }).stdout || '').trim();
+      const optOn = (name) => tget(['show-options', '-gqv', name]) === '1';
+      // Rebuild the bar preserving both toggles (minimized + keep-playing).
+      const rebuild = () => tx(['set-option', '-g', 'status-right',
+        statusRight({ minimized: optOn('@kaboom_min'), keepPlaying: optOn('@kaboom_keep') })]);
       if (range === 'claude') tx(['select-pane', '-t', claudePane]);    // switch to Claude
       else if (range === 'game') tx(['select-pane', '-t', gamePane]);   // switch to the game
       else if (range === 'zoom') tx(['resize-pane', '-Z', '-t', gamePane]); // maximise (fullscreen toggle)
-      else if (range === 'minimize') {                                  // ›› shrink the game to a sliver
+      else if (range === 'keepplaying') {                               // toggle "Don't interrupt"
+        tx(['set-option', '-g', '@kaboom_keep', optOn('@kaboom_keep') ? '0' : '1']);
+        rebuild();
+      } else if (range === 'minimize') {                                // ›› shrink the game to a sliver
         // Leave fullscreen first so the width change is visible.
         if (tget(['display-message', '-p', '-t', gamePane, '#{window_zoomed_flag}']) === '1') {
           tx(['resize-pane', '-Z', '-t', gamePane]);
@@ -81,7 +90,8 @@ function main() {
         tx(['select-pane', '-t', gamePane, '-T', '‹‹']);
         tx(['resize-pane', '-t', gamePane, '-x', '6']);                 // sliver — just wide enough to click
         tx(['select-pane', '-t', claudePane]);                         // hand focus to Claude
-        tx(['set-option', '-g', 'status-right', statusRight(true)]);    // status button also flips ›› → ‹‹
+        tx(['set-option', '-g', '@kaboom_min', '1']);
+        rebuild();                                                      // status button flips ›› → ‹‹
       } else if (range === 'restore') {                                 // ‹‹ bring the game back to its last size
         let w = parseInt(tget(['show-options', '-pqv', '-t', gamePane, '@kaboom_lastw']), 10);
         if (!w || w < 6) {                                              // no memory → sensible default (~62%)
@@ -90,7 +100,8 @@ function main() {
         }
         tx(['resize-pane', '-t', gamePane, '-x', String(w)]);
         tx(['select-pane', '-t', gamePane, '-T', 'GAME ▶']);           // back into the game, drop the ‹‹ label
-        tx(['set-option', '-g', 'status-right', statusRight(false)]);   // button flips ‹‹ → ››
+        tx(['set-option', '-g', '@kaboom_min', '0']);
+        rebuild();                                                      // button flips ‹‹ → ››
       } else if (range === 'quit') {                                    // close the game only…
         tx(['set-option', '-g', 'status-right', CLOSE_CLAUDE_BAR]);     // …and flip the button to "✕ Close Claude"
         tx(['kill-pane', '-t', gamePane]);

@@ -279,12 +279,18 @@ function restoreSelf() {
   }
   tmuxSelf(['resize-pane', '-t', SELF_PANE, '-x', String(w)]);
   tmuxSelf(['select-pane', '-t', SELF_PANE, '-T', 'GAME ▶']); // drop the ‹‹ affordance
-  tmuxSelf(['set-option', '-g', 'status-right', statusRight(false)]);
+  tmuxSelf(['set-option', '-g', '@kaboom_min', '0']);
+  tmuxSelf(['set-option', '-g', 'status-right',
+    statusRight({ minimized: false, keepPlaying: keepPlaying() })]); // preserve Don't-interrupt
   prev = null; // force a full redraw at the new size
 }
 // Read Claude's state. When Claude STARTS working, bring the game into focus so
-// you can play the wait. When Claude replies, only show a note — never switch
-// you back.
+// you can play the wait. When Claude REPLIES, by default pause the game and
+// return focus to Claude — unless "Don't interrupt" (@kaboom_keep) is on, in
+// which case we stay and just show a 🔔 note.
+function keepPlaying() {
+  return tmuxGet(['show-options', '-gqv', '@kaboom_keep']) === '1';
+}
 function pollClaude() {
   let m = 0;
   try { m = fs.statSync(ACT).mtimeMs; } catch (_) {}
@@ -294,13 +300,19 @@ function pollClaude() {
     if (s === 'busy') {
       claudeReady = false;
       prev = null;
-      // Focus the game pane so it starts playing. This is the ONLY automatic
-      // switch — toward the game, never back to Claude. It does NOT zoom the
-      // pane fullscreen; you decide when to zoom (Alt-z / ⤢ button).
+      // Focus the game pane so it starts playing. Does NOT zoom fullscreen —
+      // you decide when to zoom (Alt-z / ⤢ button).
       if (SELF_PANE) tmuxSelf(['select-pane', '-t', SELF_PANE]);
       if (!focused) { focused = true; updatePaused(); }
     } else if (s === 'idle') {
-      if (!claudeReady) { claudeReady = true; prev = null; }
+      if (keepPlaying()) {
+        // Opted out of interruption → stay in the game, show the 🔔 note.
+        if (!claudeReady) { claudeReady = true; prev = null; }
+      } else {
+        // Default → hop back to Claude (game pauses via the focus-out event).
+        claudeReady = false;
+        tmuxSelf(['select-pane', '-L']);
+      }
     }
     claudeMtime = m;
   }
