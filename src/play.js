@@ -36,7 +36,8 @@ let sixelCols = 0, sixelRows = 0;     // last pane size (detect resize → clear
 let sixelStartRow = 0;                // top row of the game image (rows above = info panel)
 let panelTick = 0;                    // throttles the info-panel redraw
 let bellState = null;                 // 'replied' | 'needs' | null — attention bell above the game
-let bellShown = false, bellFrame = -1; // animation bookkeeping
+let bellShown = false, bellFrame = -1; // blink bookkeeping
+let bellActivePrev = false, bellUntil = 0; // episode tracking (auto-stops after a while)
 
 // Coupling for `split` (KABOOM_ID injected into both panes). The game plays only
 // while its pane is FOCUSED and freezes when you switch away — so you control
@@ -330,30 +331,32 @@ function maybePanel() {
   if (panelTick++ % 6 !== 0) return;       // ~3x/sec at 20fps
   const d = readInfo();
   const needsYou = NEEDS_YOU.indexOf(d.bell) !== -1;
-  bellState = needsYou ? 'needs' : (d.activity !== 'busy' && claudeReady ? 'replied' : null);
+  const active = needsYou || (d.activity !== 'busy' && claudeReady);
+  if (active && !bellActivePrev) bellUntil = Date.now() + 12000; // new episode → alert for ~12s
+  bellActivePrev = active;
+  bellState = (active && Date.now() < bellUntil) ? (needsYou ? 'needs' : 'replied') : null;
   renderInfoPanel(d);
 }
-// The attention bell: an animated row DIRECTLY above the game. It "swings"
-// (arcs flip) and pulses so it catches your eye without touching the game.
+// The attention bell: a calmly BLINKING row directly above the game. Just the
+// bell icon toggles on/off (steady soft-yellow text); it auto-stops after the
+// episode window so it never lingers on screen.
 function renderBell() {
   if (!useSixel || !KID) return;
   const row = sixelStartRow - 1;
   if (row < 2) return;
   if (!bellState) {                        // no attention needed → clear once
-    if (bellShown) { out.write(`\x1b[${row};1H\x1b[K`); bellShown = false; bellFrame = -1; }
+    if (bellShown) { out.write(`\x1b[${row};1H\x1b[0m\x1b[K`); bellShown = false; bellFrame = -1; }
     return;
   }
-  const f = Math.floor(Date.now() / 150) % 4;
-  if (bellShown && f === bellFrame) return; // only redraw when the frame changes (~7fps)
-  bellFrame = f;
-  const arc = (f % 2 === 0) ? '(🔔)' : ')🔔(';           // flip → swinging clapper
-  const wig = (f === 1 || f === 2) ? ' ' : '';           // tiny horizontal wiggle
-  const style = (f < 2) ? '\x1b[1;38;5;227m' : '\x1b[1;7;38;5;227m'; // pulse: bold ↔ reverse
+  const on = Math.floor(Date.now() / 550) % 2 === 0; // ~1 blink/sec
+  const fr = on ? 1 : 0;
+  if (bellShown && fr === bellFrame) return; // redraw only when it toggles
+  bellFrame = fr;
+  const bell = on ? '🔔' : '  ';            // blink just the icon; text stays put
   const msg = bellState === 'needs' ? 'Claude needs you — Alt-←' : 'Claude replied — Alt-←';
-  const text = `${wig}${arc} ${msg}`;
   const cols = out.columns || 80;
   const col = Math.max(1, Math.floor((cols - 28) / 2) + 1);
-  out.write(`\x1b[${row};1H\x1b[K\x1b[${row};${col}H${style} ${text} \x1b[0m`);
+  out.write(`\x1b[${row};1H\x1b[0m\x1b[K\x1b[${row};${col}H\x1b[38;5;222m${bell} ${msg}\x1b[0m`);
   bellShown = true;
 }
 // Paused screen for Sixel mode: clear only the game area (keep the info panel).
