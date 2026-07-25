@@ -303,6 +303,14 @@ function buildPanelLines(d, cols) {
   if (busy && d.tool) L.push(' ' + PC.label + 'tool ' + PC.reset + PC.val + d.tool + PC.reset);
   if (info.costUsd) L.push(' ' + PC.label + 'cost ' + PC.reset + PC.val + '$' + info.costUsd.toFixed(2) + PC.reset);
   if (d.turns) L.push(' ' + PC.label + 'turn ' + PC.reset + PC.val + d.turns + PC.reset);
+  // Controls — compact, at the bottom of the panel (cut first if space is tight).
+  const key = (k, act) => PC.val + k + PC.reset + PC.label + ' ' + act + PC.reset;
+  L.push('');
+  L.push(' ' + PC.label + 'controls' + PC.reset);
+  L.push(' ' + key('WASD', 'move') + '  ' + key('Space', 'fire'));
+  L.push(' ' + key('E', 'use') + '  ' + key('Shift', 'run'));
+  L.push(' ' + key('1-7', 'weapons') + '  ' + key('Tab', 'map'));
+  L.push(' ' + key('Esc', 'menu') + '  ' + key('Q', 'quit'));
   return L;
 }
 function renderInfoPanel() {

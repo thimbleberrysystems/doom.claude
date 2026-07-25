@@ -13,9 +13,8 @@
 const btn = (name, label, bg) =>
   `#[fg=colour231,bg=${bg}]#[range=user|${name}] ${label} #[norange]#[default] `;
 
-const HINT = `#[fg=colour246]WASD/↔ move · Shift run · Space fire · E use · 1-7 weapons · Tab map · Esc menu · Q quit#[default]   `;
-
-// Normal split bar. opts: { minimized, keepPlaying }.
+// Normal split bar. opts: { minimized, keepPlaying }. (Game controls live in the
+// info panel inside the game pane, so the bar holds only the clickable buttons.)
 function statusRight(opts) {
   opts = opts || {};
   const toggle = opts.minimized
@@ -24,8 +23,7 @@ function statusRight(opts) {
   const keep = opts.keepPlaying
     ? btn('keepplaying', '✓ Don’t interrupt', 'colour28')  // active → won't switch back
     : btn('keepplaying', 'Don’t interrupt', 'colour238');  // off (default) → returns to Claude
-  return HINT +
-    btn('claude', '◀ Claude', 'colour24') + btn('game', 'Game ▶', 'colour28') +
+  return btn('claude', '◀ Claude', 'colour24') + btn('game', 'Game ▶', 'colour28') +
     keep + toggle + btn('zoom', '⤢ Zoom', 'colour238') +
     btn('quit', '✕ Close game', 'colour88');
 }
