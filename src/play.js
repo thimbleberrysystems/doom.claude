@@ -35,6 +35,8 @@ let sixelPrevSig = -1;                // last drawn frame signature (for idle fr
 let sixelCols = 0, sixelRows = 0;     // last pane size (detect resize → clear)
 let sixelStartRow = 0;                // top row of the game image (rows above = info panel)
 let panelTick = 0;                    // throttles the info-panel redraw
+let bellState = null;                 // 'replied' | 'needs' | null — attention bell above the game
+let bellShown = false, bellFrame = -1; // animation bookkeeping
 
 // Coupling for `split` (KABOOM_ID injected into both panes). The game plays only
 // while its pane is FOCUSED and freezes when you switch away — so you control
@@ -281,16 +283,14 @@ function readInfo() {
 }
 function buildPanelLines(d, cols) {
   const info = d.info || {}, now = Date.now(), L = [];
-  const busy = d.activity === 'busy', needsYou = NEEDS_YOU.indexOf(d.bell) !== -1;
-  // State line carries the "bell": working / needs-you / replied / idle.
+  const busy = d.activity === 'busy';
+  // State line (the attention bell is a separate animated row above the game).
   let state;
   if (busy) {
     const sp = SPIN[Math.floor(now / 100) % SPIN.length];
     const el = d.start ? '  ' + PC.label + fmtElapsed(Math.max(0, Math.floor(now / 1000) - d.start)) + PC.reset : '';
     state = `${PC.green}${sp} Working${PC.reset}${el}`;
-  } else if (needsYou) state = `${PC.yellow}🔔 Claude needs you${PC.reset}`;
-  else if (claudeReady) state = `${PC.yellow}🔔 Claude replied${PC.reset}`;
-  else state = `${PC.label}✓ idle${PC.reset}`;
+  } else state = `${PC.label}✓ idle${PC.reset}`;
   L.push(' ' + state);
   if (info.model) L.push(' ' + PC.cyan + info.model + PC.reset);
   L.push('');
@@ -313,12 +313,11 @@ function buildPanelLines(d, cols) {
   L.push(' ' + key('Esc', 'menu') + '  ' + key('Q', 'quit'));
   return L;
 }
-function renderInfoPanel() {
-  if (!KID || !useSixel) return;
-  const maxRows = sixelStartRow - 1;
+function renderInfoPanel(d) {
+  const maxRows = sixelStartRow - 2; // reserve the last row (above the game) for the bell
   if (maxRows < 3) return; // not enough room above the game
   const cols = out.columns || 80;
-  const lines = buildPanelLines(readInfo(), cols);
+  const lines = buildPanelLines(d, cols);
   let buf = '';
   for (let i = 0; i < maxRows; i++) {
     buf += `\x1b[${i + 1};1H\x1b[K`;      // clear the panel row
@@ -327,7 +326,35 @@ function renderInfoPanel() {
   out.write(buf);
 }
 function maybePanel() {
-  if (useSixel && KID && (panelTick++ % 6 === 0)) renderInfoPanel(); // ~3x/sec at 20fps
+  if (!useSixel || !KID) return;
+  if (panelTick++ % 6 !== 0) return;       // ~3x/sec at 20fps
+  const d = readInfo();
+  const needsYou = NEEDS_YOU.indexOf(d.bell) !== -1;
+  bellState = needsYou ? 'needs' : (d.activity !== 'busy' && claudeReady ? 'replied' : null);
+  renderInfoPanel(d);
+}
+// The attention bell: an animated row DIRECTLY above the game. It "swings"
+// (arcs flip) and pulses so it catches your eye without touching the game.
+function renderBell() {
+  if (!useSixel || !KID) return;
+  const row = sixelStartRow - 1;
+  if (row < 2) return;
+  if (!bellState) {                        // no attention needed → clear once
+    if (bellShown) { out.write(`\x1b[${row};1H\x1b[K`); bellShown = false; bellFrame = -1; }
+    return;
+  }
+  const f = Math.floor(Date.now() / 150) % 4;
+  if (bellShown && f === bellFrame) return; // only redraw when the frame changes (~7fps)
+  bellFrame = f;
+  const arc = (f % 2 === 0) ? '(🔔)' : ')🔔(';           // flip → swinging clapper
+  const wig = (f === 1 || f === 2) ? ' ' : '';           // tiny horizontal wiggle
+  const style = (f < 2) ? '\x1b[1;38;5;227m' : '\x1b[1;7;38;5;227m'; // pulse: bold ↔ reverse
+  const msg = bellState === 'needs' ? 'Claude needs you — Alt-←' : 'Claude replied — Alt-←';
+  const text = `${wig}${arc} ${msg}`;
+  const cols = out.columns || 80;
+  const col = Math.max(1, Math.floor((cols - 28) / 2) + 1);
+  out.write(`\x1b[${row};1H\x1b[K\x1b[${row};${col}H${style} ${text} \x1b[0m`);
+  bellShown = true;
 }
 // Paused screen for Sixel mode: clear only the game area (keep the info panel).
 function drawFrozenSixel() {
@@ -620,12 +647,12 @@ async function start() {
     if (!paused) {
       if (wasPaused) { sixelPrevSig = -1; prev = null; wasPaused = false; } // force a full redraw on resume
       engine.tick();
-      if (useSixel) { renderFrameSixel(engine); maybePanel(); }
+      if (useSixel) { renderFrameSixel(engine); maybePanel(); renderBell(); }
       else { renderFrame(engine); if (claudeReady) drawClaudeNotice(); }
     } else {
       wasPaused = true;
       if (frozenDirty) { if (useSixel) drawFrozenSixel(); else drawFrozen(); frozenDirty = false; }
-      maybePanel(); // keep Claude's info live even while the game is paused
+      maybePanel(); renderBell(); // keep Claude's info + attention bell live while paused
     }
     setTimeout(loop, delay);
   };
