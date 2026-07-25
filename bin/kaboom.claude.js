@@ -65,21 +65,26 @@ function main() {
     }
     case 'click': {
       // Internal: status-bar button dispatch from `split`.
-      // argv: click <range> <socket> <gamePane> <claudePane>
-      const [range, socket, gamePane, claudePane] = process.argv.slice(3);
+      // argv: click <range> <socket> <gamePane> <claudePane> <id>
+      const [range, socket, gamePane, claudePane, kid] = process.argv.slice(3);
       const { statusRight, CLOSE_CLAUDE_BAR } = require('../src/bar');
       const { spawnSync } = require('child_process');
+      const fs = require('fs'), os = require('os'), path = require('path');
       const tx = (a) => spawnSync('tmux', ['-L', socket, ...a], { stdio: 'ignore' });
       const tget = (a) => (spawnSync('tmux', ['-L', socket, ...a], { encoding: 'utf8' }).stdout || '').trim();
       const optOn = (name) => tget(['show-options', '-gqv', name]) === '1';
+      // "Don't interrupt" lives in a file the game reads (robust cross-process).
+      const keepFile = path.join(os.homedir(), '.claude', 'kaboom', `keep.${kid}`);
+      const keepOn = () => { try { return fs.readFileSync(keepFile, 'utf8').trim() === '1'; } catch (_) { return false; } };
       // Rebuild the bar preserving both toggles (minimized + keep-playing).
       const rebuild = () => tx(['set-option', '-g', 'status-right',
-        statusRight({ minimized: optOn('@kaboom_min'), keepPlaying: optOn('@kaboom_keep') })]);
+        statusRight({ minimized: optOn('@kaboom_min'), keepPlaying: keepOn() })]);
       if (range === 'claude') tx(['select-pane', '-t', claudePane]);    // switch to Claude
       else if (range === 'game') tx(['select-pane', '-t', gamePane]);   // switch to the game
       else if (range === 'zoom') tx(['resize-pane', '-Z', '-t', gamePane]); // maximise (fullscreen toggle)
       else if (range === 'keepplaying') {                               // toggle "Don't interrupt"
-        tx(['set-option', '-g', '@kaboom_keep', optOn('@kaboom_keep') ? '0' : '1']);
+        try { fs.mkdirSync(path.dirname(keepFile), { recursive: true }); } catch (_) {}
+        try { fs.writeFileSync(keepFile, keepOn() ? '0' : '1'); } catch (_) {}
         rebuild();
       } else if (range === 'minimize') {                                // ›› shrink the game to a sliver
         // Leave fullscreen first so the width change is visible.

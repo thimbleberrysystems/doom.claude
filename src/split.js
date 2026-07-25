@@ -67,8 +67,9 @@ function run() {
     log(`tmux new-session failed: ${(r.stderr || '').trim()}`);
     process.exit(1);
   }
-  // Give the game 62% of the width so it renders bigger / more readable.
-  r = tmux(['split-window', '-h', '-l', '62%', '-t', `${session}:0`, shell]);
+  // Claude fills the left; the game is a right-hand column (its picture docks to
+  // the bottom, so it sits bottom-right). ~34% keeps Claude dominant.
+  r = tmux(['split-window', '-h', '-l', '34%', '-t', `${session}:0`, shell]);
   if (r.status !== 0) {
     tmux(['kill-session', '-t', session]);
     log(`tmux split-window failed: ${(r.stderr || '').trim()}`);
@@ -89,8 +90,8 @@ function run() {
   // while focused and freezes when you switch to Claude (never forced).
   tmux(['set-option', '-g', 'mouse', 'on']);
   tmux(['set-option', '-g', 'focus-events', 'on']);
-  tmux(['bind-key', '-n', 'M-Left', 'select-pane', '-L']);
-  tmux(['bind-key', '-n', 'M-Right', 'select-pane', '-R']);
+  tmux(['bind-key', '-n', 'M-Left', 'select-pane', '-L']);   // Claude (left)
+  tmux(['bind-key', '-n', 'M-Right', 'select-pane', '-R']);  // game (right)
   tmux(['bind-key', '-n', 'M-z', 'resize-pane', '-Z']);
   // Move the divider: DRAG it with the mouse (mouse is on), or nudge it with
   // Alt-Shift-Left/Right. `-r` makes them repeatable so you can hold the combo
@@ -116,16 +117,21 @@ function run() {
   const { statusRight } = require('./bar');
   tmux(['set-option', '-g', 'status-left', ' kaboom.claude   ']);
   tmux(['set-option', '-g', 'status-left-length', '20']);
-  // Toggle state lives in tmux options so the click dispatch + game agree.
+  // Minimize state lives in a tmux option; "Don't interrupt" lives in a file the
+  // game reads (keep.<id>) — start it cleared so replies return to Claude.
   tmux(['set-option', '-g', '@kaboom_min', '0']);   // not minimized
-  tmux(['set-option', '-g', '@kaboom_keep', '0']);  // "Don't interrupt" off → return to Claude when it replies
+  try {
+    const kdir = require('path').join(require('os').homedir(), '.claude', 'kaboom');
+    require('fs').mkdirSync(kdir, { recursive: true });
+    require('fs').writeFileSync(require('path').join(kdir, `keep.${id}`), '0');
+  } catch (_) {}
   // The game pane is on the right, so the controls hint + buttons live in
   // status-right (right-aligned) to sit under the game.
   tmux(['set-option', '-g', 'status-right', statusRight({ minimized: false, keepPlaying: false })]);
   tmux(['set-option', '-g', 'status-right-length', '220']);
   tmux(['set-option', '-g', 'status-style', 'bg=colour235,fg=colour252']);
   tmux(['bind-key', '-n', 'MouseDown1Status', 'run-shell', '-b',
-    `node ${q(GAME)} click "#{mouse_status_range}" ${SOCKET} ${gamePane} ${claudePane}`]);
+    `node ${q(GAME)} click "#{mouse_status_range}" ${SOCKET} ${gamePane} ${claudePane} ${id}`]);
 
   if (!claudeOk) {
     log('Note: `claude` was not found on PATH; start Claude Code in the left pane yourself.');

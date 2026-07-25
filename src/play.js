@@ -41,6 +41,9 @@ let sixelCols = 0, sixelRows = 0;     // last pane size (detect resize → clear
 // (no KABOOM_ID) always runs and never pauses.
 const KID = process.env.KABOOM_ID || null;
 const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`) : null;
+// "Don't interrupt" flag, written by the status-bar button (bin click) and read
+// here. A plain file (like ACT) — no cross-process tmux read to go wrong.
+const KEEP = KID ? path.join(os.homedir(), '.claude', 'kaboom', `keep.${KID}`) : null;
 const SELF_PANE = process.env.TMUX_PANE || ''; // this game's tmux pane
 // After the game closes, the status bar shows just this — a ✕ that ends the
 // whole split. Shared with split/click via src/bar.js.
@@ -231,10 +234,13 @@ function renderFrameSixel(eng) {
   if (sig === sixelPrevSig) return; // unchanged → nothing to redraw
   sixelPrevSig = sig;
 
-  // Center horizontally; anchor at the top. Synchronized output (DEC 2026)
-  // brackets the write so the terminal swaps the whole frame at once.
+  // Center horizontally; DOCK to the bottom of the pane (so the game sits
+  // bottom-right, with empty space above). Leave the last row free to avoid
+  // scrolling. Synchronized output (DEC 2026) swaps the whole frame at once.
   const padCols = Math.max(0, Math.floor((cols - Math.ceil(outW / sixelCellW)) / 2));
-  const home = `\x1b[1;${padCols + 1}H`;
+  const imgRows = Math.ceil(outH / sixelCellH);
+  const startRow = Math.max(1, rows - imgRows);
+  const home = `\x1b[${startRow};${padCols + 1}H`;
   out.write('\x1b[?2026h' + home + frameToSixel(fb, sw, sh, outW, outH) + '\x1b[?2026l');
 }
 
@@ -337,10 +343,10 @@ function restoreSelf() {
 }
 // Read Claude's state. When Claude STARTS working, bring the game into focus so
 // you can play the wait. When Claude REPLIES, by default pause the game and
-// return focus to Claude — unless "Don't interrupt" (@kaboom_keep) is on, in
+// return focus to Claude — unless "Don't interrupt" (the keep.<id> file) is on, in
 // which case we stay and just show a 🔔 note.
 function keepPlaying() {
-  return tmuxGet(['show-options', '-gqv', '@kaboom_keep']) === '1';
+  try { return fs.readFileSync(KEEP, 'utf8').trim() === '1'; } catch (_) { return false; }
 }
 function pollClaude() {
   let m = 0;
