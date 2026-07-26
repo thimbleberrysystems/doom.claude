@@ -77,6 +77,15 @@ Either way it's **24-bit truecolor**, fit to your terminal; press **Alt-z** (⤢
 - **`tmux`** for the split (Linux / macOS / WSL). Full-screen `play` mode doesn't need it. For the crisp **Sixel** picture in the split, tmux must be built with `--enable-sixel` (tmux ≥3.4) — otherwise it falls back to blocks.
 - A **truecolor terminal**. For pixel-sharp text, a **Sixel-capable** one (Windows Terminal ≥1.22, WezTerm, xterm, foot, mlterm…); otherwise any terminal with a sextant-capable font works via the block fallback.
 
+## What it touches (and how to undo it)
+
+kaboom is deliberately conservative about your machine:
+
+- **It edits `~/.claude/settings.json`** to add its hooks and a status-line wrapper — writing atomically (temp-file + rename), backing up your original once, and preserving/passing through your existing status line. **`npx kaboom.claude unhook` removes everything and restores your status line exactly.**
+- **The hooks do nothing outside a kaboom split** — every one is guarded on the `KABOOM_ID` env var (validated to reject path characters), so your other Claude sessions are unaffected.
+- **State lives in a private `~/.claude/kaboom/` dir** (mode `700`); externally-sourced strings (model/tool names) are stripped of control bytes before they're drawn, so nothing can inject terminal escapes into the panel.
+- **No install scripts, one small dependency** (`sixel`), and no network access — the engine and game data are bundled and run locally. `npm audit`: clean.
+
 ## Credits & license
 
 - [Freedoom](https://freedoom.github.io/) — the free, BSD-licensed game data (`freedoom1.wad`). © 2001–2024 the Freedoom contributors (see `engine/FREEDOOM-CREDITS.txt`).

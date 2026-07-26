@@ -44,7 +44,14 @@ let bellActivePrev = false, bellUntil = 0; // episode tracking (auto-stops after
 // pause/play just by moving between panes; nothing is ever forced. Separately,
 // Claude's replies show a gentle "ready" note (no interruption). Standalone play
 // (no KABOOM_ID) always runs and never pauses.
-const KID = process.env.KABOOM_ID || null;
+// Validate KABOOM_ID before it goes anywhere near a filesystem path — reject
+// anything but [A-Za-z0-9_-] so it can't traverse out of ~/.claude/kaboom.
+const KID = (process.env.KABOOM_ID && /^[A-Za-z0-9_-]+$/.test(process.env.KABOOM_ID))
+  ? process.env.KABOOM_ID : null;
+// Strip control/escape bytes from any externally-sourced string before drawing
+// it to the terminal (model/tool names can come from Claude/MCP) — prevents
+// ANSI-escape injection that could spoof the panel or feed the host shell.
+const clean = (s, max = 40) => String(s == null ? '' : s).replace(/[\x00-\x1f\x7f-\x9f]/g, '').slice(0, max);
 const ACT = KID ? path.join(os.homedir(), '.claude', 'kaboom', `activity.${KID}`) : null;
 // "Don't interrupt" flag, written by the status-bar button (bin click) and read
 // here. A plain file (like ACT) — no cross-process tmux read to go wrong.
@@ -293,7 +300,7 @@ function buildPanelLines(d, cols) {
     state = `${PC.green}${sp} Working${PC.reset}${el}`;
   } else state = `${PC.label}✓ idle${PC.reset}`;
   L.push(' ' + state);
-  if (info.model) L.push(' ' + PC.cyan + info.model + PC.reset);
+  if (info.model) L.push(' ' + PC.cyan + clean(info.model, 24) + PC.reset);
   L.push('');
   if (info.ctxSize) {
     const w = Math.max(6, Math.min(12, cols - 14));
@@ -301,7 +308,7 @@ function buildPanelLines(d, cols) {
   }
   if (info.inTok) L.push(' ' + PC.label + 'tok ' + PC.reset + PC.val + fmtTokens(info.inTok) + PC.reset);
   if (d.agents > 0) L.push(' ' + PC.label + 'agents ' + PC.reset + PC.val + d.agents + PC.reset);
-  if (busy && d.tool) L.push(' ' + PC.label + 'tool ' + PC.reset + PC.val + d.tool + PC.reset);
+  if (busy && d.tool) L.push(' ' + PC.label + 'tool ' + PC.reset + PC.val + clean(d.tool, 20) + PC.reset);
   if (info.costUsd) L.push(' ' + PC.label + 'cost ' + PC.reset + PC.val + '$' + info.costUsd.toFixed(2) + PC.reset);
   if (d.turns) L.push(' ' + PC.label + 'turn ' + PC.reset + PC.val + d.turns + PC.reset);
   // Controls — compact, at the bottom of the panel (cut first if space is tight).

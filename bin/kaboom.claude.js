@@ -67,7 +67,8 @@ function main() {
     case 'click': {
       // Internal: status-bar button dispatch from `split`.
       // argv: click <range> <socket> <gamePane> <claudePane> <id>
-      const [range, socket, gamePane, claudePane, kid] = process.argv.slice(3);
+      const [range, socket, gamePane, claudePane, kidRaw] = process.argv.slice(3);
+      const kid = /^[A-Za-z0-9_-]+$/.test(kidRaw || '') ? kidRaw : ''; // reject path chars
       const { statusRight, CLOSE_CLAUDE_BAR } = require('../src/bar');
       const { spawnSync } = require('child_process');
       const fs = require('fs'), os = require('os'), path = require('path');

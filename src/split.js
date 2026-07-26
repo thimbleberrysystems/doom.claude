@@ -122,7 +122,7 @@ function run() {
   tmux(['set-option', '-g', '@kaboom_min', '0']);   // not minimized
   try {
     const kdir = require('path').join(require('os').homedir(), '.claude', 'kaboom');
-    require('fs').mkdirSync(kdir, { recursive: true });
+    require('fs').mkdirSync(kdir, { recursive: true, mode: 0o700 });
     require('fs').writeFileSync(require('path').join(kdir, `keep.${id}`), '0');
   } catch (_) {}
   // The game pane is on the right, so the controls hint + buttons live in

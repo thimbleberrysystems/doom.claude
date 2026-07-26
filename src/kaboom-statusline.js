@@ -25,7 +25,7 @@ process.stdin.on('end', () => {
   // 1) Capture telemetry for the game (kaboom sessions only).
   try {
     const kid = process.env.KABOOM_ID;
-    if (kid) {
+    if (kid && /^[A-Za-z0-9_-]+$/.test(kid)) { // reject path-traversal chars in the id
       const j = JSON.parse(input);
       const cw = j.context_window || {};
       const cost = j.cost || {};
@@ -44,20 +44,26 @@ process.stdin.on('end', () => {
         agentName: (j.agent && j.agent.name) || '',
         t: Date.now(),
       };
-      try { fs.mkdirSync(KDIR, { recursive: true }); } catch (_) {}
+      try { fs.mkdirSync(KDIR, { recursive: true, mode: 0o700 }); } catch (_) {}
       fs.writeFileSync(path.join(KDIR, `info.${kid}.json`), JSON.stringify(info));
     }
   } catch (_) { /* bad/absent JSON → skip capture */ }
 
   // 2) Pass through to the user's original status line, if any.
+  // This runs a stored command via `sh -c`, so guard the source file: it must be
+  // a regular file we own (not a symlink someone planted) before we trust it.
   try {
-    const raw = fs.readFileSync(path.join(KDIR, 'orig-statusline.json'), 'utf8');
-    const orig = JSON.parse(raw); // the saved statusLine object, or null
-    if (orig && orig.type === 'command' && orig.command) {
-      const r = spawnSync('sh', ['-c', orig.command], { input, encoding: 'utf8', timeout: 2000 });
-      if (r.stdout) process.stdout.write(r.stdout);
+    const f = path.join(KDIR, 'orig-statusline.json');
+    const st = fs.lstatSync(f);
+    const ownedByUs = typeof process.getuid !== 'function' || st.uid === process.getuid();
+    if (st.isFile() && ownedByUs) {
+      const orig = JSON.parse(fs.readFileSync(f, 'utf8')); // saved statusLine object, or null
+      if (orig && orig.type === 'command' && typeof orig.command === 'string') {
+        const r = spawnSync('sh', ['-c', orig.command], { input, encoding: 'utf8', timeout: 2000 });
+        if (r.stdout) process.stdout.write(r.stdout);
+      }
     }
-  } catch (_) { /* no original → print nothing (same as no status line) */ }
+  } catch (_) { /* no original / not trustworthy → print nothing */ }
 
   process.exit(0);
 });

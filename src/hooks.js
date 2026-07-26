@@ -33,19 +33,25 @@ const MARKER = '# kaboom.claude';
 
 function q(s) { return `'${String(s).replace(/'/g, `'\\''`)}'`; }
 
-// Shell guard prefix: bail unless in a kaboom split; ensure the state dir.
-const G = '[ -n "$KABOOM_ID" ] || exit 0; K="$HOME/.claude/kaboom"; mkdir -p "$K"';
+// Shell guard prefix: bail unless $KABOOM_ID is a safe id (no path/traversal
+// chars — prevents writing state files outside ~/.claude/kaboom); ensure the
+// state dir exists and is private (700).
+const G = 'case "$KABOOM_ID" in ""|*[!A-Za-z0-9_-]*) exit 0;; esac; ' +
+  'K="$HOME/.claude/kaboom"; mkdir -p "$K"; chmod 700 "$K" 2>/dev/null';
+// Sanitize a counter read from a state file before arithmetic (a crafted
+// non-numeric value could otherwise abuse bash arithmetic expansion).
+const NUM = (v) => `case $${v} in *[!0-9]*) ${v}=0;; esac`;
 const HOOKS = {
   UserPromptSubmit:
     `${G}; printf busy > "$K/activity.$KABOOM_ID"; date +%s > "$K/start.$KABOOM_ID"; ` +
-    `n=$(cat "$K/turns.$KABOOM_ID" 2>/dev/null||echo 0); echo $((n+1)) > "$K/turns.$KABOOM_ID"; ` +
+    `n=$(cat "$K/turns.$KABOOM_ID" 2>/dev/null||echo 0); ${NUM('n')}; echo $((n+1)) > "$K/turns.$KABOOM_ID"; ` +
     `: > "$K/bell.$KABOOM_ID"  ${MARKER}`,
   Stop:
     `${G}; printf idle > "$K/activity.$KABOOM_ID"; date +%s > "$K/end.$KABOOM_ID"  ${MARKER}`,
   SubagentStart:
-    `${G}; n=$(cat "$K/agents.$KABOOM_ID" 2>/dev/null||echo 0); echo $((n+1)) > "$K/agents.$KABOOM_ID"  ${MARKER}`,
+    `${G}; n=$(cat "$K/agents.$KABOOM_ID" 2>/dev/null||echo 0); ${NUM('n')}; echo $((n+1)) > "$K/agents.$KABOOM_ID"  ${MARKER}`,
   SubagentStop:
-    `${G}; n=$(cat "$K/agents.$KABOOM_ID" 2>/dev/null||echo 0); m=$((n-1)); [ $m -lt 0 ] && m=0; ` +
+    `${G}; n=$(cat "$K/agents.$KABOOM_ID" 2>/dev/null||echo 0); ${NUM('n')}; m=$((n-1)); [ $m -lt 0 ] && m=0; ` +
     `echo $m > "$K/agents.$KABOOM_ID"  ${MARKER}`,
   PreToolUse:
     `${G}; t=$(sed -n 's/.*"tool_name"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p'|head -1); ` +
@@ -78,11 +84,17 @@ function readSettings() {
 }
 function backupOnce(exists) {
   if (!exists) return;
-  try { fs.copyFileSync(SETTINGS_FILE, BACKUP_FILE); } catch (_) {}
+  // Only back up the PRISTINE settings once — never overwrite a good backup with
+  // an already-modified (hooked) copy.
+  try { if (!fs.existsSync(BACKUP_FILE)) fs.copyFileSync(SETTINGS_FILE, BACKUP_FILE); } catch (_) {}
 }
 function writeSettings(data) {
   try { fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true }); } catch (_) {}
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2) + '\n');
+  // Atomic write (temp + rename) so a crash or a concurrent writer can't leave
+  // the user's global settings.json truncated/corrupt.
+  const tmp = SETTINGS_FILE + '.kaboom-tmp';
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n');
+  fs.renameSync(tmp, SETTINGS_FILE);
 }
 function stripMarker(arr) {
   if (!Array.isArray(arr)) return arr;
@@ -117,9 +129,10 @@ function install() {
   // statusLine: save the user's original (unless it's already ours), then install
   // our wrapper (copied to a stable path). The wrapper passes the original
   // through so nothing is lost.
-  try { fs.mkdirSync(KABOOM_DIR, { recursive: true }); } catch (_) {}
+  try { fs.mkdirSync(KABOOM_DIR, { recursive: true, mode: 0o700 }); } catch (_) {}
   if (!isOurStatusLine(data.statusLine)) {
-    try { fs.writeFileSync(ORIG_SL, JSON.stringify(data.statusLine || null)); } catch (_) {}
+    // 0600: the wrapper runs this file's command via `sh -c`, so keep it private.
+    try { fs.writeFileSync(ORIG_SL, JSON.stringify(data.statusLine || null), { mode: 0o600 }); } catch (_) {}
   }
   let slPath = SL_STABLE;
   try { fs.copyFileSync(SL_SCRIPT, SL_STABLE); } catch (_) { slPath = SL_SCRIPT; } // fall back to in-package path
